@@ -7,7 +7,7 @@ jest cmake skonfigurowanyto mozecie skompilowac w root katalogu tym (nie trzeba 
 ```
 mkdir build && cd build && cmake .. -G Ninja && ninja 
 ```
-plik wykonywalny sie znajdowac w root_katalog/bin
+plik wykonywalny sie znajdowac w build
 
 tez jest jakis skrypt to mozecie se wpisywac ```./run.sh``` i powinno dzialac
 
