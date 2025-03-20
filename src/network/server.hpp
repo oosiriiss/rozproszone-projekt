@@ -1,18 +1,12 @@
 #pragma once
+#include "socket.hpp"
 #include <netinet/in.h>
 #include <vector>
 
 namespace network {
 
-struct ClientData {
-  int socketfd;
-  // TODO :: create my own wrapper?
-  struct sockaddr_in connectionData;
-};
+struct Server {
 
-class Server {
-
-public:
   Server();
   ~Server();
 
@@ -21,14 +15,15 @@ public:
    * !! Must be called before trying to use any other function !!
    **/
   bool bind(const char *ipAddress, unsigned short port);
-  // Accepts clients and adds it to internal client list
-  bool acceptClient();
-  bool send(const char *msg);
-  bool receive(char *outBuf);
 
-private:
-  int m_socketfd;
+  // Sets the socket into blocking mode and waits for {clients} clients to
+  // connect and then adds them to internal clients list
+  bool waitForClients(uint32_t clients);
+  std::optional<SocketError> send(const char *msg);
+  std::string receive();
 
-  std::vector<ClientData> m_clients;
+  Socket m_socket;
+
+  std::vector<Socket> m_clients;
 };
 } // namespace network

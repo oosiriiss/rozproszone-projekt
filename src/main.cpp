@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <csignal>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
@@ -13,22 +14,35 @@
 
 const int PORT = 39213;
 
+sig_atomic_t SIGINT_RECEIVED = 0;
+
+void SIGINT_handler(int s) {
+  std::cout << "SIGINT received - closing...\n";
+  SIGINT_RECEIVED = 1;
+}
+
 int main(int argc, char *argv[]) {
+
+  // SIGKILL HANDLERS
+  // to allow graceful shutdown when uses presses ctrl-c
+  std::signal(SIGINT, SIGINT_handler);
 
   if (argc > 1 && (strcmp(argv[1], "server") == 0)) {
     network::Server server;
 
     server.bind("127.0.0.1", PORT);
-    server.acceptClient();
+    server.waitForClients(1);
 
     int i = 0;
     while (1) {
-      char buf[512] = {0};
-      server.receive((char *)&buf);
-      std::cout << "Message from client is: " << buf << '\n';
-      server.send("this is message from server");
+      if (SIGINT_RECEIVED)
+        break;
 
-      sleep(2);
+      std::string msg = server.receive();
+      std::cout << "Message from client is: " << msg << '\n';
+      server.send("this is message from serverSEPARATOR");
+
+      usleep(500 * 1000);
     }
   }
   // CLIENT
@@ -38,14 +52,15 @@ int main(int argc, char *argv[]) {
     client.connect("127.0.0.1", PORT);
 
     while (true) {
-      client.send("Wiadomosc do serwera od klienta");
+      if (SIGINT_RECEIVED)
+        break;
 
-      char buf[512] = {0};
-      client.receive((char *)&buf);
+      client.send("Wiadomosc do serwera od klientaSEPARATOR");
 
-      std::cout << "Message from server is: " << buf << '\n';
+      std::string msg = client.receive();
+      std::cout << "Message from server is: (" << msg << ")\n";
 
-      sleep(2);
+      usleep(500 * 1000);
     }
   }
 }

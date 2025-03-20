@@ -1,18 +1,17 @@
 #pragma once
+#include "socket.hpp"
 
 namespace network {
-class Client {
+struct Client {
 
 public:
   Client();
   ~Client();
 
   bool connect(const char *ipAddress, unsigned short port);
-  bool send(const char *msg);
-  bool receive(char *outBuf);
-
-private:
+  std::optional<SocketError> send(const char *msg);
+  std::string receive();
   // client scoket description
-  int m_socketfd;
+  Socket m_socket;
 };
 }; // namespace network

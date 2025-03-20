@@ -47,7 +47,6 @@ if [[ $# == 0 ]]; then
    if [[ compile_result -eq 0 ]]; then
 	 echo "running executable"
 	 echo ""
-	 cd ../bin
       	 ./executable
    else 
       echo "Couldn't run exectuable"
