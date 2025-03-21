@@ -27,40 +27,59 @@ int main(int argc, char *argv[]) {
   // to allow graceful shutdown when uses presses ctrl-c
   std::signal(SIGINT, SIGINT_handler);
 
-  if (argc > 1 && (strcmp(argv[1], "server") == 0)) {
+  if (argc > 1 && argv[1][0] == 's') {
     network::Server server;
 
     server.bind("127.0.0.1", PORT);
-    server.waitForClients(1);
+    server.waitForClients(2);
 
-    int i = 0;
+    std::string msg;
+
     while (1) {
       if (SIGINT_RECEIVED)
         break;
 
-      std::string msg = server.receive();
-      std::cout << "Message from client is: " << msg << '\n';
+      // Should be in pollMessage?
+      server.receive();
+
+      while (server.pollMessage(msg, "SEPARATOR"))
+        std::cout << "Message from client is: " << msg << '\n';
+
       server.send("this is message from serverSEPARATOR");
 
-      usleep(500 * 1000);
+      usleep(50 * 1000);
     }
   }
   // CLIENT
   else {
 
+    const char *id = "NOID";
+
+    if (argc > 2)
+      id = argv[2];
+
+    std::string send_msg = "wiadomosc od klienta ";
+    send_msg.append(id);
+    send_msg.append("SEPARATOR");
+
     network::Client client;
     client.connect("127.0.0.1", PORT);
+
+    std::string message;
 
     while (true) {
       if (SIGINT_RECEIVED)
         break;
 
-      client.send("Wiadomosc do serwera od klientaSEPARATOR");
+      client.send(send_msg.c_str());
 
-      std::string msg = client.receive();
-      std::cout << "Message from server is: (" << msg << ")\n";
+      client.receive();
 
-      usleep(500 * 1000);
+      if (client.getMessage(message, "SEPARATOR")) {
+        std::cout << "Message from server is: (" << message << ")\n";
+      }
+
+      usleep(200 * 1000);
     }
   }
 }

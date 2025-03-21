@@ -1,7 +1,11 @@
 #include <arpa/inet.h>
+#include <cassert>
 #include <cstring>
 #include <netinet/in.h>
+#include <optional>
+#include <string_view>
 #include <sys/socket.h>
+#include <vector>
 
 #include "../logging.hpp"
 #include "server.hpp"
@@ -69,25 +73,51 @@ bool Server::waitForClients(uint32_t clients) {
 }
 
 std::optional<SocketError> Server::send(const char *msg) {
-  for (Socket &client : m_clients) {
+  int clients = m_clients.size();
+
+  for (int i = 0; i < clients; ++i) {
+
+    Socket &client = m_clients[i];
+
     auto err = client.send(msg, strlen(msg));
     if (err) {
+      if (err == SocketError::Disconnected) {
+        LOG_INFO("Client disconnected");
+        m_clients.erase(m_clients.begin() + i);
+        // retry of the same iteration
+        --clients;
+        --i;
+      }
+
       return *err;
     }
+    LOG_INFO("AFTR");
   }
   return std::nullopt;
 }
 
-std::string Server::receive() {
+std::optional<SocketError> Server::receive() {
   for (Socket &client : m_clients) {
-    client.receive();
+    auto error = client.receive();
+    if (error)
+      return error;
   }
-  for (Socket &client : m_clients) {
-    auto x = client.nextMessage("SEPARATOR");
-    if (x != "")
-      return x;
+  return std::nullopt;
+}
+
+bool Server::pollMessage(std::string &msg, std::string_view separator) {
+
+  for (auto &client : m_clients) {
+
+    if (client.hasMessage(separator)) {
+      msg = client.nextMessage(separator);
+      assert(msg != "" && msg != "ERROR" && msg != "NOSIZE");
+
+      return true;
+    }
   }
-  return "";
+
+  return false;
 }
 
 } // namespace network

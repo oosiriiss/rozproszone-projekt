@@ -9,7 +9,6 @@
 #include <string>
 #include <string_view>
 #include <sys/socket.h>
-#include <variant>
 
 namespace network {
 
@@ -22,6 +21,8 @@ SocketError errnoToSocketError() {
   const int WOULDBLOCK = EAGAIN | EWOULDBLOCK;
 
   switch (errno) {
+  case EPIPE:
+    return SocketError::Disconnected;
   case EACCES:
     return SocketError::NoAccess;
   case EBADF:
@@ -87,23 +88,26 @@ std::optional<SocketError> Socket::shutdown() noexcept {
 }
 
 std::optional<SocketError> Socket::send(const char *msg, uint32_t msglen) {
+
+  int r = ::send(this->fd, msg, msglen, MSG_NOSIGNAL);
+
   // Is this necessary?
-  if (::send(this->fd, msg, msglen, 0) < 0)
+  if (r < 0) {
+    LOG_ERROR("SEND ERROR");
     return errnoToSocketError();
+  }
   return std::nullopt;
 }
 
 std::optional<SocketError> Socket::receive() {
   // TODO :: Make this read whole socket data
-
   // Is this necessary?
+
   if (this->fd == INVALID_SOCKET_DESCRIPTOR)
     return SocketError::InvalidDescriptor;
-
   std::string buf(4096, 0);
 
   int bytesRead = recv(this->fd, &buf[0], buf.size(), 0);
-
   if (bytesRead < 0)
     return errnoToSocketError();
 
@@ -133,6 +137,11 @@ std::string Socket::nextMessage(std::string_view separator) {
   this->currentData.erase(0, startOfNextMessage);
 
   return msg;
+}
+
+bool Socket::hasMessage(std::string_view separator) {
+  return this->currentData.find(separator.data(), 0, separator.size()) !=
+         std::string::npos;
 }
 
 bool Socket::setBlocking(bool shouldBlock) {

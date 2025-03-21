@@ -51,18 +51,21 @@ std::optional<SocketError> Client::send(const char *msg) {
   return std::nullopt;
 }
 
-std::string Client::receive() {
-
-  // Reading the stream
+std::optional<SocketError> Client::receive() {
   auto error = m_socket.receive();
-  if (error) {
-    LOG_ERROR("Couldn't receive message", static_cast<int>(error.value()),
-              " Socket ", m_socket.fd);
-    return "ERRSR";
+  if (error)
+    return error;
+
+  return std::nullopt;
+}
+
+bool Client::getMessage(std::string &msg, std::string_view separator) {
+  if (m_socket.hasMessage(separator)) {
+    msg = m_socket.nextMessage("SEPARATOR");
+    return true;
   }
-  // gettin the msg from stream
-  auto x = m_socket.nextMessage("SEPARATOR");
-  return x;
+
+  return false;
 }
 
 } // namespace network

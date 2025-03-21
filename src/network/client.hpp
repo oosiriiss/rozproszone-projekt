@@ -10,7 +10,9 @@ public:
 
   bool connect(const char *ipAddress, unsigned short port);
   std::optional<SocketError> send(const char *msg);
-  std::string receive();
+  std::optional<SocketError> receive();
+  bool getMessage(std::string &msg, std::string_view separator);
+
   // client scoket description
   Socket m_socket;
 };
