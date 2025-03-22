@@ -20,8 +20,9 @@ struct Server {
   // connect and then adds them to internal clients list
   bool waitForClients(uint32_t clients);
   //
-  bool pollMessage(std::string &msg, std::string_view separator);
-  std::optional<SocketError> send(const char *msg);
+  std::optional<std::pair<Socket *, std::string>>
+  pollMessage(std::string_view separator);
+  std::optional<SocketError> send(const char *msg, size_t len);
   // Read all pending data from sockets
   std::optional<SocketError> receive();
 

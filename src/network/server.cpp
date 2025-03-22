@@ -5,6 +5,7 @@
 #include <optional>
 #include <string_view>
 #include <sys/socket.h>
+#include <utility>
 #include <vector>
 
 #include "../logging.hpp"
@@ -57,8 +58,10 @@ bool Server::waitForClients(uint32_t clients) {
     struct sockaddr_in client = {0};
     socklen_t len = 0;
 
+    LOG_INFO("Waiting for connect");
     const int clientSocket =
         accept(m_socket.fd, (struct sockaddr *)&client, &len);
+    LOG_INFO("One connected");
 
     if (clientSocket < 0) {
       LOG_ERROR("Couldn't accept client errno: ", errno);
@@ -72,14 +75,14 @@ bool Server::waitForClients(uint32_t clients) {
   return true;
 }
 
-std::optional<SocketError> Server::send(const char *msg) {
+std::optional<SocketError> Server::send(const char *msg, size_t len) {
   int clients = m_clients.size();
 
   for (int i = 0; i < clients; ++i) {
 
     Socket &client = m_clients[i];
 
-    auto err = client.send(msg, strlen(msg));
+    auto err = client.send(msg, len);
     if (err) {
       if (err == SocketError::Disconnected) {
         LOG_INFO("Client disconnected");
@@ -105,19 +108,16 @@ std::optional<SocketError> Server::receive() {
   return std::nullopt;
 }
 
-bool Server::pollMessage(std::string &msg, std::string_view separator) {
-
+std::optional<std::pair<Socket *, std::string>>
+Server::pollMessage(std::string_view separator) {
   for (auto &client : m_clients) {
 
-    if (client.hasMessage(separator)) {
-      msg = client.nextMessage(separator);
-      assert(msg != "" && msg != "ERROR" && msg != "NOSIZE");
-
-      return true;
+    if (auto x = client.nextMessage(separator)) {
+      return std::make_pair(&client, *x);
     }
   }
 
-  return false;
+  return std::nullopt;
 }
 
 } // namespace network

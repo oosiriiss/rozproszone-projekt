@@ -117,15 +117,15 @@ std::optional<SocketError> Socket::receive() {
 }
 
 // TODO :: MERGe this with receive
-std::string Socket::nextMessage(std::string_view separator) {
-  if (this->currentData.size() == 0)
-    return "NOSIZE";
+std::optional<std::string> Socket::nextMessage(std::string_view separator) {
+  if (this->currentData.size() <= separator.size())
+    return std::nullopt;
 
   const int startIndex =
       this->currentData.find(separator.data(), 0, separator.size());
-  if (startIndex == std::variant_npos) {
+  if (startIndex == std::string::npos) {
     LOG_ERROR("NO SEPARATOR FOUND IN(", this->currentData, ")");
-    return "ERROR";
+    return std::nullopt;
   }
 
   // Copying the message
@@ -137,11 +137,6 @@ std::string Socket::nextMessage(std::string_view separator) {
   this->currentData.erase(0, startOfNextMessage);
 
   return msg;
-}
-
-bool Socket::hasMessage(std::string_view separator) {
-  return this->currentData.find(separator.data(), 0, separator.size()) !=
-         std::string::npos;
 }
 
 bool Socket::setBlocking(bool shouldBlock) {

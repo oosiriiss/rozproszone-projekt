@@ -53,9 +53,7 @@ struct Socket {
   //
   // Allocates new buffer for current message <-- ??? is this good
   // Returns currnet message, and moves the buffer to the next one
-  std::string nextMessage(std::string_view separator);
-  // Returns true if there is full message available to read
-  bool hasMessage(std::string_view separator);
+  std::optional<std::string> nextMessage(std::string_view separator);
 
   bool setBlocking(bool shouldBlock);
 

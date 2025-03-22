@@ -42,8 +42,8 @@ bool Client::connect(const char *ipAddress, unsigned short port) {
   return true;
 }
 
-std::optional<SocketError> Client::send(const char *msg) {
-  auto error = m_socket.send(msg, strlen(msg));
+std::optional<SocketError> Client::send(const char *msg, size_t len) {
+  auto error = m_socket.send(msg, len);
   if (error) {
     return error.value();
   }
@@ -59,13 +59,8 @@ std::optional<SocketError> Client::receive() {
   return std::nullopt;
 }
 
-bool Client::getMessage(std::string &msg, std::string_view separator) {
-  if (m_socket.hasMessage(separator)) {
-    msg = m_socket.nextMessage("SEPARATOR");
-    return true;
-  }
-
-  return false;
+std::optional<std::string> Client::pollMessage(std::string_view separator) {
+  return m_socket.nextMessage(separator);
 }
 
 } // namespace network
