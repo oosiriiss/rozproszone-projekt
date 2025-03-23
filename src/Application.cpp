@@ -72,7 +72,6 @@ void Application::server() {
     server.receive();
 
     while (auto sockmsg = server.pollMessage(network::SEPARATOR)) {
-      LOG_INFO("POLLING");
 
       auto [socket, msg] = *sockmsg;
 
@@ -81,9 +80,10 @@ void Application::server() {
           std::cout << "Received acquire id request from client: ";
 
           network::AcquireIDResponse r = {.id = ids++};
+          LOG_INFO("sent id ", (int)r.id);
           std::string response = network::encodePacket(r);
 
-          server.send(response.c_str(), response.size());
+          socket->send(response.c_str(), response.size());
         }
       } else {
         LOG_ERROR("Decoding client packet error\n");
@@ -136,7 +136,6 @@ void Application::client(const char *id) {
       }
     }
 
-    LOG_INFO("MSG IS", msg);
     client.send(msg.c_str(), msg.size());
     client.receive();
     while (auto msg = client.pollMessage(network::SEPARATOR)) {
@@ -145,8 +144,8 @@ void Application::client(const char *id) {
         if (auto *response =
                 std::get_if<network::AcquireIDResponse>(&(*rcvd))) {
 
-          std::cout << "Received acquire id response with id: " << response->id
-                    << '\n';
+          std::cout << "Received acquire id response with id: "
+                    << (int)response->id << '\n';
         }
 
       } else {

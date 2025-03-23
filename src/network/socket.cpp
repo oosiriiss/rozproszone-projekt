@@ -12,7 +12,7 @@
 
 namespace network {
 
-const Socket Socket::NULL_SOCKET = {
+constexpr Socket Socket::NULL_SOCKET = {
     .fd = -1, .addr = {}, .addrlen = 0, .currentData = ""};
 
 SocketError errnoToSocketError() {
@@ -74,7 +74,7 @@ std::expected<Socket, SocketError> Socket::create(const char *ipAddress,
   return Socket{.fd = socketfd,
                 .addr = addr,
                 .addrlen = sizeof(addr),
-                .currentData = std::string(4096, 0)};
+                .currentData = std::string(0, 0)};
 }
 std::optional<SocketError> Socket::shutdown() noexcept {
   // Should this be an error or just ignored?
@@ -108,11 +108,11 @@ std::optional<SocketError> Socket::receive() {
   std::string buf(4096, 0);
 
   int bytesRead = recv(this->fd, &buf[0], buf.size(), 0);
-  if (bytesRead < 0)
+
+  if (bytesRead <= 0)
     return errnoToSocketError();
 
   this->currentData.append(buf.substr(0, bytesRead));
-
   return std::nullopt;
 }
 
@@ -124,7 +124,7 @@ std::optional<std::string> Socket::nextMessage(std::string_view separator) {
   const int startIndex =
       this->currentData.find(separator.data(), 0, separator.size());
   if (startIndex == std::string::npos) {
-    LOG_ERROR("NO SEPARATOR FOUND IN(", this->currentData, ")");
+    LOG_ERROR("NO SEPARATOR FOUND IN ", currentData.size());
     return std::nullopt;
   }
 

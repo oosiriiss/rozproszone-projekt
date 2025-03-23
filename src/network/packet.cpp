@@ -1,5 +1,6 @@
 #include "packet.hpp"
 #include "../logging.hpp"
+#include <cassert>
 #include <cstdint>
 #include <expected>
 #include <optional>
@@ -17,10 +18,23 @@ constexpr int32_t HEADER_LENGTH_BYTES = sizeof(VERSION) + sizeof(PacketType);
 // like assings packet type etc.
 std::string createPacketHeader(PacketType type) {
 
-  std::string header(HEADER_LENGTH_BYTES, 0);
+  static_assert(sizeof((VERSION)) == 4, "Version length != 4");
+  static_assert(sizeof(std::to_underlying(type)) == 2,
+                "Size of PacketType underlying type != 2");
 
-  header.append(VERSION);
-  header.append(std::to_string(std::to_underlying(type)));
+  std::string header;
+  header.reserve(HEADER_LENGTH_BYTES);
+
+  LOG_INFO("HEADER LEN BYTES: ", HEADER_LENGTH_BYTES);
+  header.append(VERSION, sizeof(VERSION));
+  LOG_INFO("Header len1: ", header.size());
+
+  uint16_t typeID = std::to_underlying(type);
+
+  header.push_back((uint8_t)(typeID >> 8));
+  header.push_back((uint8_t)typeID);
+
+  LOG_INFO("Header len2: ", header.size());
 
   return header;
 }
@@ -108,12 +122,12 @@ std::optional<ClientPacket> decodeClientPacket(const std::string &packet) {
   auto headerResult = parseHeader(packet);
 
   if (!headerResult) {
-    LOG_ERROR("Packet peader Couldn't be parsed");
+    LOG_ERROR("Packet header Couldn't be parsed");
     return std::nullopt;
   }
 
   PacketType type = *headerResult;
-  const std::string &body = packet.substr(0, HEADER_LENGTH_BYTES);
+  uint32_t BODY_START = HEADER_LENGTH_BYTES;
 
   switch (type) {
   case PacketType::AcquireID:
@@ -143,11 +157,11 @@ std::optional<ServerPacket> decodeServerPacket(const std::string &packet) {
   }
 
   PacketType type = *headerResult;
-  const std::string &body = packet.substr(0, HEADER_LENGTH_BYTES);
+  uint32_t BODY_START = HEADER_LENGTH_BYTES;
 
   switch (type) {
   case PacketType::AcquireID: {
-    uint8_t id = body[0];
+    uint8_t id = packet[BODY_START];
 
     return AcquireIDResponse{.id = id};
   }
