@@ -14,16 +14,26 @@ struct AcquireIDResponse {
   uint8_t id;
 };
 
-enum class PacketError { InvalidHeader };
-
-enum class PacketType : uint16_t {
-  AcquireID = 0,
-
+struct PlayerMovedRequest {
+  uint8_t playerId;
+  float x;
+  float y;
 };
 
-typedef std::variant<AcquireIDRequest> ClientPacket;
+struct PlayerMovedResponse {
+  uint8_t playerId;
+  float x;
+  float y;
+};
 
-typedef std::variant<AcquireIDResponse> ServerPacket;
+enum class PacketError { InvalidHeader };
+
+enum class PacketType : uint16_t { AcquireID = 0, PlayerMoved = 1 };
+
+// TODO :: Change this to inheritance?
+typedef std::variant<AcquireIDRequest, PlayerMovedRequest> ClientPacket;
+// TODO :: Change this to inheritance?
+typedef std::variant<AcquireIDResponse, PlayerMovedResponse> ServerPacket;
 
 std::string encodePacket(const ClientPacket &packet);
 std::optional<ClientPacket> decodeClientPacket(const std::string &packet);

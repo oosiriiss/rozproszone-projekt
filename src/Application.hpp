@@ -9,7 +9,7 @@ public:
   ~Application() = default;
 
   void server();
-  void client(const char *id);
+  void client();
 
 private:
   sf::RenderWindow m_window;

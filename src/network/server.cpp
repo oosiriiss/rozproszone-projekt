@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <atomic>
 #include <cassert>
 #include <cstring>
 #include <netinet/in.h>
@@ -68,8 +69,10 @@ bool Server::waitForClients(uint32_t clients) {
       return false;
     }
 
-    m_clients.push_back(
-        Socket{.fd = clientSocket, .addr = client, .addrlen = len});
+    // Nonblocking socket
+    Socket s = Socket{.fd = clientSocket, .addr = client, .addrlen = len};
+    s.setBlocking(false);
+    m_clients.push_back(s);
   }
   m_socket.setBlocking(true);
   return true;
@@ -102,7 +105,7 @@ std::optional<SocketError> Server::send(const char *msg, size_t len) {
 std::optional<SocketError> Server::receive() {
   for (Socket &client : m_clients) {
     auto error = client.receive();
-    if (error)
+    if (error && *error != SocketError::WouldBlock)
       return error;
   }
   return std::nullopt;

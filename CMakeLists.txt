@@ -25,6 +25,7 @@ target_sources(executable
    src/main.cpp
    src/Application.cpp
    src/logging.hpp
+   src/game/player.cpp
    src/network/socket.cpp
    src/network/server.cpp
    src/network/client.cpp
