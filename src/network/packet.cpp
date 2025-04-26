@@ -1,6 +1,4 @@
-#include "packet.hpp"
-#include "../assert.hpp"
-#include "../logging.hpp"
+#include <csignal>
 #include <cstdint>
 #include <cstring>
 #include <expected>
@@ -11,6 +9,10 @@
 #include <utility>
 #include <variant>
 
+#include "../assert.hpp"
+#include "../logging.hpp"
+#include "packet.hpp"
+
 namespace network {
 
 constexpr std::optional<PacketType> getType(const uint16_t type);
@@ -18,13 +20,14 @@ constexpr std::optional<PacketType> getType(const uint16_t type);
 constexpr int32_t HEADER_LENGTH_BYTES = sizeof(VERSION) + sizeof(PacketType);
 
 void assertServerBodySize(PacketType type, uint32_t bodysize) {
-
   switch (type) {
-  case PacketType::AcquireID:
-    break;
   case PacketType::PlayerMoved:
-    assertEqual(bodysize, sizeof(PlayerMovedResponse),
-                "Player moved response size");
+    ASSERT(sizeof(PlayerMovedResponse) == bodysize);
+    break;
+  case PacketType::JoinLobby:
+    break;
+  case PacketType::StartGame:
+    ASSERT(sizeof(PlayerMovedResponse) == bodysize);
     break;
   }
 }
@@ -32,11 +35,13 @@ void assertServerBodySize(PacketType type, uint32_t bodysize) {
 void assertClientBodySize(PacketType type, uint32_t bodysize) {
 
   switch (type) {
-  case PacketType::AcquireID:
-    // AcquireIdRequest has no body
-    break;
   case PacketType::PlayerMoved:
-    assertEqual(bodysize, sizeof(PlayerMovedRequest));
+    ASSERT(sizeof(PlayerMovedRequest) == bodysize);
+    break;
+  case PacketType::JoinLobby:
+    break;
+  case PacketType::StartGame:
+    UNREACHABLE;
     break;
   }
 }
@@ -94,13 +99,17 @@ std::expected<PacketType, PacketError> parseHeader(const std::string &packet) {
 constexpr std::optional<PacketType> getType(const uint16_t type) {
 
   switch (type) {
-  case static_cast<int>(PacketType::AcquireID):
+  case static_cast<uint16_t>(PacketType::AcquireID):
     return PacketType::AcquireID;
-  case static_cast<int>(PacketType::PlayerMoved):
+  case static_cast<uint16_t>(PacketType::PlayerMoved):
     return PacketType::PlayerMoved;
-  default:
-    return std::nullopt;
+  case static_cast<uint16_t>(PacketType::JoinLobby):
+    return PacketType::JoinLobby;
+  case static_cast<uint16_t>(PacketType::StartGame):
+    return PacketType::StartGame;
   }
+
+  UNREACHABLE;
 }
 
 constexpr PacketType getType(const ClientPacket &packet) {
@@ -115,7 +124,11 @@ constexpr PacketType getType(const ClientPacket &packet) {
           return PacketType::PlayerMoved;
         }
 
-        throw std::invalid_argument("PACKET TYPE CONVERSION NOT IMPLEMENTED");
+        if constexpr (std::is_same_v<T, JoinLobbyRequest>) {
+          return PacketType::JoinLobby;
+        }
+
+        ASSERT(!"Packet server type conversion not implemented");
       },
       packet);
 }
@@ -131,32 +144,56 @@ constexpr PacketType getType(const ServerPacket &packet) {
         if constexpr (std::is_same_v<T, PlayerMovedResponse>) {
           return PacketType::PlayerMoved;
         }
-
-        LOG_ERROR("");
-        throw std::invalid_argument("PACKET TYPE CONVERSION NOT IMPLEMENTED");
+        if constexpr (std::is_same_v<T, JoinLobbyResponse>) {
+          return PacketType::JoinLobby;
+        }
+        ASSERT(!"Packet server type conversion not implemented");
       },
       packet);
 }
 
 std::string encodePacket(const ClientPacket &packet) {
   std::string message = createPacketHeader(getType(packet));
-  // Todo :: Create one buffer for al lvariants?
 
-  if (const auto *acquireID = std::get_if<AcquireIDRequest>(&packet)) {
-    //
-  } else if (const auto *playerMoved =
-                 std::get_if<PlayerMovedRequest>(&packet)) {
-    char buf[sizeof(PlayerMovedRequest)] = {0};
-    std::memcpy(buf, playerMoved, sizeof(PlayerMovedRequest));
-    message.append(buf, sizeof(PlayerMovedRequest));
-  }
+  LOG_DEBUG("Encoded message before size: ", message.size());
 
-  message.append(SEPARATOR);
+  std::visit(
+      [&message](auto &&p) {
+        using T = std::decay_t<decltype(p)>;
+        char buf[sizeof(T)] = {0};
+        std::memcpy(buf, &p, sizeof(T));
+        message.append(buf, sizeof(T));
+      },
+      packet);
+  message.append(SEPARATOR, sizeof(SEPARATOR));
+
+  LOG_DEBUG("Encoded message size: ", message.size());
+
+  return message;
+}
+
+std::string encodePacket(const ServerPacket &packet) {
+
+  std::string message = createPacketHeader(getType(packet));
+  LOG_DEBUG("Encoded message before size: ", message.size());
+
+  std::visit(
+      [&message](auto &&p) {
+        using T = std::decay_t<decltype(p)>;
+        char buf[sizeof(T)] = {0};
+        std::memcpy(buf, &p, sizeof(T));
+        message.append(buf, sizeof(T));
+      },
+      packet);
+
+  message.append(SEPARATOR, sizeof(SEPARATOR));
+  LOG_DEBUG("Encoded message size: ", message.size());
   return message;
 }
 
 std::optional<ClientPacket> decodeClientPacket(const std::string &packet) {
 
+  LOG_DEBUG("Decoding client packet");
   auto headerResult = parseHeader(packet);
 
   if (!headerResult) {
@@ -171,6 +208,7 @@ std::optional<ClientPacket> decodeClientPacket(const std::string &packet) {
 
   const std::string_view &body = packet.data() + HEADER_LENGTH_BYTES;
 
+  LOG_DEBUG("Decoded");
   switch (type) {
   case PacketType::AcquireID:
     return AcquireIDRequest{};
@@ -178,41 +216,17 @@ std::optional<ClientPacket> decodeClientPacket(const std::string &packet) {
     PlayerMovedRequest p;
     std::memcpy(&p, body.data(), sizeof(PlayerMovedRequest));
     return p;
-
-  default:
-    LOG_ERROR("Unknown player packet id: ", std::to_underlying(type));
-    throw std::invalid_argument("Invalid client packet");
-    break;
+  case PacketType::JoinLobby:
+    JoinLobbyRequest r;
+    std::memcpy(&r, body.data(), sizeof(JoinLobbyRequest));
+    return r;
   }
   throw std::runtime_error("Unreachable");
 }
 
-std::string encodePacket(const ServerPacket &packet) {
-
-  std::string message = createPacketHeader(getType(packet));
-
-  if (const auto *acquireID = std::get_if<AcquireIDResponse>(&packet)) {
-    char buf[sizeof(AcquireIDResponse)] = {0};
-    std::memcpy(buf, acquireID, sizeof(AcquireIDResponse));
-    message.append(buf, sizeof(AcquireIDResponse));
-
-    LOG_INFO("Size of id response str no head",
-             message.size() - HEADER_LENGTH_BYTES);
-
-  } else if (const auto *playerMoved =
-                 std::get_if<PlayerMovedResponse>(&packet)) {
-    char buf[sizeof(PlayerMovedResponse)] = {0};
-    std::memcpy(buf, playerMoved, sizeof(PlayerMovedResponse));
-    message.append(buf, sizeof(PlayerMovedResponse));
-  } else {
-    assertEqual(true, false, "Packet type not implemented");
-  }
-
-  message.append(SEPARATOR);
-  return message;
-}
 std::optional<ServerPacket> decodeServerPacket(const std::string &packet) {
 
+  LOG_DEBUG("decoding server packet");
   auto headerResult = parseHeader(packet);
 
   if (!headerResult) {
@@ -228,6 +242,7 @@ std::optional<ServerPacket> decodeServerPacket(const std::string &packet) {
 
   const std::string_view &body = packet.data() + HEADER_LENGTH_BYTES;
 
+  LOG_DEBUG("Decoded");
   switch (type) {
   case PacketType::AcquireID: {
     AcquireIDResponse i;
@@ -238,7 +253,10 @@ std::optional<ServerPacket> decodeServerPacket(const std::string &packet) {
     PlayerMovedResponse p;
     std::memcpy(&p, body.data(), sizeof(PlayerMovedResponse));
     return p;
-    break;
+  case PacketType::JoinLobby:
+    JoinLobbyResponse r;
+    std::memcpy(&r, body.data(), sizeof(JoinLobbyResponse));
+    return r;
   }
 
   throw std::runtime_error("Unreachable");

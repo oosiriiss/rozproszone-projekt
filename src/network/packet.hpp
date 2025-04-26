@@ -9,8 +9,12 @@ namespace network {
 constexpr char SEPARATOR[4] = {0x0A, 0x0A, 0x0A, 0x0A};
 constexpr char VERSION[4] = {0, 0, 0, 1};
 
-struct AcquireIDRequest {};
-struct AcquireIDResponse {
+struct JoinLobbyRequest {};
+struct JoinLobbyResponse {
+  uint8_t connectedPlayersCount;
+};
+
+struct StartGameResponse {
   uint8_t id;
 };
 
@@ -28,16 +32,20 @@ struct PlayerMovedResponse {
 
 enum class PacketError { InvalidHeader };
 
-enum class PacketType : uint16_t { AcquireID = 0, PlayerMoved = 1 };
+enum class PacketType : uint16_t {
+  JoinLobby = 0,
+  StartGame = 1,
+  PlayerMoved = 2
+};
 
 // TODO :: Change this to inheritance?
-typedef std::variant<AcquireIDRequest, PlayerMovedRequest> ClientPacket;
+typedef std::variant<JoinLobbyRequest, PlayerMovedRequest> ClientPacket;
 // TODO :: Change this to inheritance?
-typedef std::variant<AcquireIDResponse, PlayerMovedResponse> ServerPacket;
+typedef std::variant<JoinLobbyResponse, StartGameResponse, PlayerMovedResponse>
+    ServerPacket;
 
 std::string encodePacket(const ClientPacket &packet);
-std::optional<ClientPacket> decodeClientPacket(const std::string &packet);
-
 std::string encodePacket(const ServerPacket &packet);
+std::optional<ClientPacket> decodeClientPacket(const std::string &packet);
 std::optional<ServerPacket> decodeServerPacket(const std::string &packet);
 } // namespace network

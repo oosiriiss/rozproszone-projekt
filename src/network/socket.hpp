@@ -44,6 +44,9 @@ struct Socket {
   std::optional<SocketError> send(const char *msg, uint32_t msglen);
   std::optional<SocketError> receive();
 
+  // valid only if the socket is server
+  std::expected<Socket, SocketError> accept();
+
   // ????? is this the right approach ????
   // User should manually use receive to read the data from the socket and then
   // use nextMessage returns all the bytes unitl separator or empty string if
@@ -53,7 +56,7 @@ struct Socket {
   //
   // Allocates new buffer for current message <-- ??? is this good
   // Returns currnet message, and moves the buffer to the next one
-  std::optional<std::string> nextMessage(std::string_view separator);
+  std::optional<std::string> nextMessage();
 
   bool setBlocking(bool shouldBlock);
 

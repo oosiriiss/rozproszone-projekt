@@ -4,8 +4,7 @@ project(rozproszone-projekt)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 23)
-
-
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
 FetchContent_Declare(SFML
@@ -16,23 +15,37 @@ FetchContent_Declare(SFML
     SYSTEM)
 FetchContent_MakeAvailable(SFML)
 
-  
-add_executable(executable)
 
-# Add sourc files here
-target_sources(executable
-   PRIVATE
+
+set(SOURCES 
    src/main.cpp
+   src/AssetManager.cpp
    src/Application.cpp
-   src/logging.hpp
-   src/game/player.cpp
+   src/Scene.cpp
+   src/game/Player.cpp
+   src/game/Enemy.cpp
+   src/game/GameWorld.cpp
+   src/game/Level.cpp
    src/network/socket.cpp
    src/network/server.cpp
    src/network/client.cpp
    src/network/packet.cpp
+   src/ui/ui.cpp
 )
 
+ 
+# DEbug build options
+add_executable(executable-debug ${SOURCES})
+target_compile_definitions(executable-debug PRIVATE DEBUG_BUILD)
+target_compile_options(executable-debug PRIVATE -g -O0)
 
+# Release build specific fileds
+add_executable(executable-release ${SOURCES})
+target_compile_definitions(executable-release PRIVATE RELEASE_BUILD)
+target_compile_options(executable-debug PRIVATE -O3)
 
-target_compile_features(executable PRIVATE cxx_std_17)
-target_link_libraries(executable PRIVATE SFML::Graphics)
+# Common options
+target_compile_features(executable-debug PRIVATE cxx_std_23)
+target_compile_features(executable-release PRIVATE cxx_std_23)
+target_link_libraries(executable-debug PRIVATE SFML::Graphics)
+target_link_libraries(executable-release PRIVATE SFML::Graphics)

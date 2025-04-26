@@ -1,4 +1,5 @@
 #pragma once
+#include "packet.hpp"
 #include "socket.hpp"
 #include <netinet/in.h>
 #include <vector>
@@ -15,15 +16,14 @@ struct Server {
    * !! Must be called before trying to use any other function !!
    **/
   bool bind(const char *ipAddress, unsigned short port);
-
-  // Sets the socket into blocking mode and waits for {clients} clients to
-  // connect and then adds them to internal clients list
-  bool waitForClients(uint32_t clients);
+  bool tryAcceptClient();
   //
-  std::optional<std::pair<Socket *, std::string>>
-  pollMessage(std::string_view separator);
-  std::optional<SocketError> send(const char *msg, size_t len);
+  std::optional<std::pair<Socket *, network::ClientPacket>> pollMessage();
+  std::optional<SocketError> sendAll(network::ServerPacket packet);
+  std::optional<SocketError> send(Socket *client, network::ServerPacket packet);
   // Read all pending data from sockets
+
+private:
   std::optional<SocketError> receive();
 
   Socket m_socket;

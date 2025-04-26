@@ -1,13 +1,14 @@
 #include "socket.hpp"
 #include "../logging.hpp"
+#include "packet.hpp"
 #include <arpa/inet.h>
 #include <cerrno>
 #include <csignal>
 #include <fcntl.h>
+#include <map>
 #include <netinet/in.h>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <sys/socket.h>
 
 namespace network {
@@ -36,6 +37,24 @@ SocketError errnoToSocketError() {
   }
 }
 
+SocketError printSocketError(SocketError value) {
+  static const auto strings = [] {
+    std::map<SocketError, std::string_view> result;
+#define INSERT_ELEMENT(p) result.emplace(p, #p);
+    INSERT_ELEMENT(SocketError::InvalidAddress);
+    INSERT_ELEMENT(SocketError::NoAccess);
+    INSERT_ELEMENT(SocketError::InvalidDescriptor);
+    INSERT_ELEMENT(SocketError::NotConnected);
+    INSERT_ELEMENT(SocketError::WouldBlock);
+    INSERT_ELEMENT(SocketError::Disconnected);
+    INSERT_ELEMENT(SocketError::UnknownError);
+#undef INSERT_ELEMENT
+    return result;
+  }();
+
+  std::cout << strings.at(value);
+  return value;
+}
 constexpr int INVALID_SOCKET_DESCRIPTOR = -1;
 
 std::expected<Socket, SocketError> Socket::create(const char *ipAddress,
@@ -103,28 +122,60 @@ std::optional<SocketError> Socket::receive() {
   // TODO :: Make this read whole socket data
   // Is this necessary?
 
-  if (this->fd == INVALID_SOCKET_DESCRIPTOR)
+  if (this->fd == INVALID_SOCKET_DESCRIPTOR) {
+    LOG_ERROR("Invalid socket descriptor");
     return SocketError::InvalidDescriptor;
+  }
   std::string buf(4096, 0);
 
-  int bytesRead = recv(this->fd, &buf[0], buf.size(), 0);
+  int bytesRead = 0;
 
-  if (bytesRead <= 0)
-    return errnoToSocketError();
+  while (int bytesRead = recv(this->fd, &buf[0], buf.size(), 0)) {
+    if (bytesRead <= 0) {
+      SocketError e = errnoToSocketError();
+      if (e == SocketError::WouldBlock)
+        return std::nullopt;
+      return printSocketError(e);
+    }
 
-  this->currentData.append(buf.substr(0, bytesRead));
+    this->currentData.append(buf.substr(0, bytesRead));
+  }
+
   return std::nullopt;
 }
 
+std::expected<Socket, SocketError> Socket::accept() {
+  //
+  // TODO :: Move this to socket class
+  //
+  struct sockaddr_in client = {0};
+  socklen_t len = 0;
+
+  const int clientSocket = ::accept(this->fd, (struct sockaddr *)&client, &len);
+
+  if (clientSocket < 0) {
+    SocketError e = errnoToSocketError();
+    if (e != SocketError::WouldBlock)
+      printSocketError(e);
+    return std::unexpected(e);
+  }
+  // Nonblocking socket
+
+  return Socket{.fd = clientSocket, .addr = client, .addrlen = len};
+}
+
 // TODO :: MERGe this with receive
-std::optional<std::string> Socket::nextMessage(std::string_view separator) {
-  if (this->currentData.size() <= separator.size())
+std::optional<std::string> Socket::nextMessage() {
+
+  constexpr auto separator = network::SEPARATOR;
+  constexpr auto separatorSize = sizeof(network::SEPARATOR);
+
+  if (this->currentData.size() <= separatorSize)
     return std::nullopt;
 
-  const int startIndex =
-      this->currentData.find(separator.data(), 0, separator.size());
+  const int startIndex = this->currentData.find(separator, 0, separatorSize);
   if (startIndex == std::string::npos) {
-    LOG_ERROR("NO SEPARATOR FOUND IN ", currentData.size());
+    LOG_ERROR("No separator found in (", std::string(separator, 4), ")");
     return std::nullopt;
   }
 
@@ -133,7 +184,7 @@ std::optional<std::string> Socket::nextMessage(std::string_view separator) {
   std::string msg = std::string(this->currentData.substr(0, startIndex));
 
   // Moving the internal buffer to the next message
-  const auto startOfNextMessage = startIndex + separator.size();
+  const auto startOfNextMessage = startIndex + separatorSize;
   this->currentData.erase(0, startOfNextMessage);
 
   return msg;

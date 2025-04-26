@@ -1,13 +1,14 @@
 #include <arpa/inet.h>
+#include <atomic>
 #include <cstring>
 #include <netinet/in.h>
 #include <optional>
-#include <string_view>
 #include <sys/socket.h>
 #include <sys/types.h>
 
 #include "../logging.hpp"
 #include "client.hpp"
+#include "packet.hpp"
 #include "socket.hpp"
 
 namespace network {
@@ -42,8 +43,12 @@ bool Client::connect(const char *ipAddress, unsigned short port) {
   return true;
 }
 
-std::optional<SocketError> Client::send(const char *msg, size_t len) {
-  auto error = m_socket.send(msg, len);
+std::optional<SocketError> Client::send(network::ClientPacket packet) {
+
+  auto msg = encodePacket(packet);
+  size_t len = msg.size();
+
+  auto error = m_socket.send(msg.c_str(), len);
   if (error) {
     return error.value();
   }
@@ -59,8 +64,23 @@ std::optional<SocketError> Client::receive() {
   return std::nullopt;
 }
 
-std::optional<std::string> Client::pollMessage(std::string_view separator) {
-  return m_socket.nextMessage(separator);
+std::optional<network::ServerPacket> Client::pollMessage() {
+
+  if (receive()) {
+    LOG_ERROR("Receive failed");
+  }
+
+  auto msg = m_socket.nextMessage();
+
+  if (!msg.has_value())
+    return std::nullopt;
+
+  auto packet = network::decodeServerPacket(*msg);
+
+  if (!packet.has_value())
+    LOG_ERROR("Couldn't serve packet");
+
+  return packet;
 }
 
 } // namespace network

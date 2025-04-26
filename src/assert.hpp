@@ -1,23 +1,21 @@
+
+#ifdef DEBUG_BUILD
 #include <iostream>
+#include <utility>
 
-#define ASSERT_HELPER(s, xval, yval, msg, FUNC, ...) FUNC
-#define assert2(xval, yval) assertEq(__FILE__, __LINE__, xval, yval, "")
-#define assert3(xval, yval, msg) assertEq(__FILE__, __LINE__, xval, yval, msg)
-
-#define assertEqual(...)                                                       \
-  ASSERT_HELPER(, ##__VA_ARGS__, assert3(__VA_ARGS__), assert2(__VA_ARGS__))
-
-// asserts x == y, crashes the app otherwise
-void assertEq(const char *file, int line, auto expected, auto actual,
-              std::string_view msg) {
-  if (expected != actual) {
-
-    std::cout << "ASSERTION FAILED\n"
-              << file << ":" << line << " Actual: " << actual
-              << " expected: " << expected;
-    if (msg.size() > 0) {
-      std::cout << " message: " << msg << '\n';
-    }
-    exit(-1);
-  }
+constexpr void __assertFail(const char *file, int line,
+                            const char *expression) {
+  std::cout << "ASSERTION FAILED\n"
+            << file << ":" << line << " Expression: " << expression << '\n';
+  exit(-1);
 }
+
+#define ASSERT(expr)                                                           \
+  (static_cast<bool>(expr) ? void(0) : __assertFail(__FILE__, __LINE__, #expr))
+#define UNREACHABLE                                                            \
+  ASSERT(false && "UNREACHABLE CODE REACHED");                                 \
+  std::unreachable();
+#else
+#define ASSERT(expr)
+#define UNREACHABLE std::unreachable();
+#endif

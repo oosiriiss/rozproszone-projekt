@@ -1,21 +1,23 @@
 #pragma once
-#include <cstdint>
 #include <cstdio>
 #include <iostream>
 
-#define LOG_ERROR(...) logError(__LINE__, __PRETTY_FUNCTION__, __VA_ARGS__)
-#define LOG_INFO(...) logInfo(__LINE__, __PRETTY_FUNCTION__, __VA_ARGS__)
+// Debug logging available only in debug compile
+#ifdef DEBUG_BUILD
+#define LOG_DEBUG(...)                                                         \
+  log("[", "\033[33m", "DEBUG", "\033[0m", "] ", __FILE_NAME__, ':', __LINE__, \
+      " ", __VA_ARGS__)
+#else
+#define LOG_DEBUG(...)
 
-template <class... ARGS>
-constexpr void logError(int32_t line, const char *function, ARGS... args) {
+#endif
 
-  std::cerr << ":" << line << " | " << function << " || ";
-  (std::cerr << ... << args) << '\n';
-}
+// These represent log messages
+#define LOG_ERROR(...)                                                         \
+  log("[", "\033[31m", "ERROR", "\033[0m", "] ", __VA_ARGS__)
 
-template <class... ARGS>
-constexpr void logInfo(int32_t line, const char *function, ARGS... args) {
+#define LOG_INFO(...) log("[", "\033[34m", "INFO", "\033[0m", "] ", __VA_ARGS__)
 
-  std::cout << ":" << line << " | " << function << " || ";
+template <typename... ARGS> constexpr void log(ARGS... args) {
   (std::cout << ... << args) << '\n';
 }
