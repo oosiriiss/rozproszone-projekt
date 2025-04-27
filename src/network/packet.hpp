@@ -6,14 +6,24 @@
 #include <string>
 #include <variant>
 
+#include "../game/Level.hpp"
+
 namespace network {
 struct JoinLobbyRequest {};
 struct JoinLobbyResponse {
   uint8_t connectedPlayersCount;
 };
 
-struct StartGameResponse {
-  uint8_t id;
+struct StartGameResponse {};
+
+struct GameReadyRequest {};
+
+struct GameReadyResponse {
+  uint8_t playerID;
+  Level::MapData map;
+
+  // std::string serialize() const;
+  // void deserialize(std::string_view body);
 };
 
 struct PlayerMovedRequest {
@@ -29,9 +39,11 @@ struct PlayerMovedResponse {
 };
 
 // TODO :: Change this to inheritance?
-typedef std::variant<JoinLobbyRequest, PlayerMovedRequest> ClientPacket;
+typedef std::variant<JoinLobbyRequest, PlayerMovedRequest, GameReadyRequest>
+    ClientPacket;
 // TODO :: Change this to inheritance?
-typedef std::variant<JoinLobbyResponse, StartGameResponse, PlayerMovedResponse>
+typedef std::variant<JoinLobbyResponse, StartGameResponse, PlayerMovedResponse,
+                     GameReadyResponse>
     ServerPacket;
 
 template <class PACKET> std::string encodePacket(const PACKET &packet);

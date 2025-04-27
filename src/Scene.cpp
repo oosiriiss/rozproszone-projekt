@@ -1,9 +1,12 @@
 #include "Scene.hpp"
 #include "debug.hpp"
+#include "game/Player.hpp"
 #include "logging.hpp"
 #include "network/packet.hpp"
 #include "ui/ui.hpp"
 #include <memory>
+
+Scene::Scene(SCENE_PARAMS) : m_sceneManager(sceneManager), m_window(window) {}
 
 SceneManager::~SceneManager() {
   while (!m_scenes.empty()) {
@@ -30,8 +33,9 @@ Scene *SceneManager::getCurrentScene() const {
 }
 
 ConnectClientScene::ConnectClientScene(const char *ip, uint16_t port,
-                                       SceneManager &sceneManager)
-    : targetIP(ip), targetPort(port), m_sceneManager(sceneManager),
+                                       SCENE_PARAMS)
+    : SCENE_CONSTRUCTOR, targetIP(ip), targetPort(port),
+      m_sceneManager(sceneManager), m_window(window),
       m_client(std::make_shared<network::Client>()) {}
 ConnectClientScene::~ConnectClientScene() {}
 
@@ -43,6 +47,8 @@ void ConnectClientScene::update() {
 
       if (auto *jlr = std::get_if<network::JoinLobbyResponse>(&packet)) {
         m_connectedPlayerCount = jlr->connectedPlayersCount;
+      } else if (auto *sgr = std::get_if<network::StartGameResponse>(&packet)) {
+        m_sceneManager.pushScene(new ClientGameScene(m_client, SCENE_ARGS));
       } else {
         LOG_ERROR("Unknown packet");
       }
@@ -73,8 +79,8 @@ void ConnectClientScene::draw() {
 }
 
 ConnectServerScene::ConnectServerScene(const char *ip, uint16_t port,
-                                       SceneManager &sceneManager)
-    : bindIP(ip), bindPort(port), m_sceneManager(sceneManager),
+                                       SCENE_PARAMS)
+    : SCENE_CONSTRUCTOR, bindIP(ip), bindPort(port),
       m_server(std::make_shared<network::Server>()) {}
 ConnectServerScene::~ConnectServerScene() {}
 void ConnectServerScene::update() {
@@ -98,10 +104,13 @@ void ConnectServerScene::update() {
     }
   }
 
-  // if (m_connectedPlayerCount == 2) {
-  //   m_server->sendAll();
-  //   m_sceneManager.pushScene(new ServerGameScene(m_server));
-  // }
+  if (m_connectedPlayerCount == 2) {
+    LOG_INFO("Players connected. Starting game");
+
+    auto gamescene = new ServerGameScene(m_server, m_sceneManager, m_window);
+    LOG_DEBUG("Game scene created");
+    m_sceneManager.pushScene(gamescene);
+  }
 }
 void ConnectServerScene::draw() {
   ui::Text(" ");
@@ -124,16 +133,60 @@ void ConnectServerScene::draw() {
   }
 }
 
-ClientGameScene::ClientGameScene(std::shared_ptr<network::Client> client)
-    : m_client(client) {}
+ClientGameScene::ClientGameScene(std::shared_ptr<network::Client> client,
+                                 SCENE_PARAMS)
+    : SCENE_CONSTRUCTOR, m_client(client), m_level() {
+
+  LOG_INFO("Client game scene");
+  m_client->send(network::GameReadyRequest{});
+}
 ClientGameScene::~ClientGameScene() {}
 
-void ClientGameScene::update() {}
-void ClientGameScene::draw() {}
+void ClientGameScene::update() {
 
-ServerGameScene::ServerGameScene(std::shared_ptr<network::Server> server)
-    : m_server(server) {}
+  while (auto msg = m_client->pollMessage()) {
+    auto packet = *msg;
+    if (auto *grr = std::get_if<network::GameReadyResponse>(&packet)) {
+      m_level = Level(grr->map);
+      m_player = Player(grr->playerID);
+
+      m_isInitialized = true;
+    }
+  }
+}
+void ClientGameScene::draw() {
+
+  if (m_isInitialized) {
+    m_level.draw(m_window);
+    m_player.draw(m_window);
+  } else {
+    ui::Text("Waiting for initialization...");
+  }
+}
+
+ServerGameScene::ServerGameScene(std::shared_ptr<network::Server> server,
+                                 SCENE_PARAMS)
+    : SCENE_CONSTRUCTOR, m_server(server), m_level() {
+
+  LOG_INFO("Server game scene");
+  m_server->sendAll(network::StartGameResponse{});
+}
 ServerGameScene::~ServerGameScene() {}
 
-void ServerGameScene::update() {}
+void ServerGameScene::update() {
+
+  while (auto sockmsg = m_server->pollMessage()) {
+    auto [socket, packet] = *sockmsg;
+
+    if (auto *grr = std::get_if<network::GameReadyRequest>(&packet)) {
+      LOG_INFO("Sending initalization packet");
+      m_server->send(socket,
+                     network::GameReadyResponse{.playerID = m_currentPlayerID++,
+                                                .map = m_level.getMapData()});
+      LOG_INFO("Initialization packet sent");
+    } else {
+      LOG_ERROR("Unknown packet encountered");
+    }
+  }
+}
 void ServerGameScene::draw() {}

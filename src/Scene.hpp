@@ -1,18 +1,29 @@
 #pragma once
 
+#include "game/Player.hpp"
 #include "logging.hpp"
 #include "network/client.hpp"
 #include "network/server.hpp"
 #include <memory>
 #include <stack>
 
+class SceneManager;
+
+#define SCENE_PARAMS SceneManager &sceneManager, sf::RenderWindow &window
+#define SCENE_ARGS m_sceneManager, m_window
+#define SCENE_CONSTRUCTOR Scene(sceneManager, window)
+
 struct Scene {
 
-  Scene() = default;
+  Scene(SCENE_PARAMS);
   virtual ~Scene() = default;
 
-  virtual void update() { LOG_DEBUG("DEFAULT SCENE UPDATE CALLED"); }
-  virtual void draw() { LOG_DEBUG("DEFAULT SCENE DRAW CALLED"); };
+  virtual void update() = 0;
+  virtual void draw() = 0;
+
+protected:
+  SceneManager &m_sceneManager;
+  sf::RenderWindow &m_window;
 };
 
 class SceneManager {
@@ -35,7 +46,7 @@ private:
 class ConnectClientScene : public Scene {
 
 public:
-  ConnectClientScene(const char *ip, uint16_t port, SceneManager &sceneManager);
+  ConnectClientScene(const char *ip, uint16_t port, SCENE_PARAMS);
   ~ConnectClientScene();
 
   void update() override;
@@ -46,15 +57,17 @@ public:
 
 private:
   std::shared_ptr<network::Client> m_client;
-  SceneManager &m_sceneManager;
   bool m_isConnected = false;
   uint8_t m_connectedPlayerCount = 0;
+
+  SceneManager &m_sceneManager;
+  sf::RenderWindow &m_window;
 };
 
 class ConnectServerScene : public Scene {
 
 public:
-  ConnectServerScene(const char *ip, uint16_t port, SceneManager &sceneManager);
+  ConnectServerScene(const char *ip, uint16_t port, SCENE_PARAMS);
   ~ConnectServerScene();
 
   void update() override;
@@ -65,9 +78,7 @@ public:
 
 private:
   std::shared_ptr<network::Server> m_server;
-  SceneManager &m_sceneManager;
   bool m_isBound = false;
-
   uint8_t m_connectedPlayerCount = 0;
 
 private:
@@ -75,7 +86,7 @@ private:
 
 class ClientGameScene : public Scene {
 public:
-  ClientGameScene(std::shared_ptr<network::Client> client);
+  ClientGameScene(std::shared_ptr<network::Client> client, SCENE_PARAMS);
   ~ClientGameScene();
 
   void update() override;
@@ -83,11 +94,14 @@ public:
 
 private:
   std::shared_ptr<network::Client> m_client;
+  Level m_level;
+  Player m_player;
+  bool m_isInitialized = false;
 };
 
 class ServerGameScene : public Scene {
 public:
-  ServerGameScene(std::shared_ptr<network::Server> server);
+  ServerGameScene(std::shared_ptr<network::Server> server, SCENE_PARAMS);
   ~ServerGameScene();
 
   void update() override;
@@ -95,4 +109,7 @@ public:
 
 private:
   std::shared_ptr<network::Server> m_server;
+  Level m_level;
+
+  uint8_t m_currentPlayerID = 0;
 };

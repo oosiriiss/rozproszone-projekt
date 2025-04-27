@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstring>
 #include <expected>
+#include <stdexcept>
 #include <string>
 #include <variant>
 
@@ -33,21 +34,62 @@ constexpr int32_t HEADER_LENGTH_BYTES =
 std::string createPacketHeader(PacketType type,
                                PacketContentLength contentLength);
 
+template <typename T>
+concept HasCustomSerialization = requires(T t) {
+  { t.serialize() } -> std::same_as<std::string>;
+};
+template <typename T>
+concept HasCustomDeserialization = requires(T t) {
+  { t.deserialize(std::declval<std::string>()) } -> std::same_as<void>;
+};
+
+template <typename VARIANT>
+constexpr std::string serializePacket(const VARIANT &packet) {
+
+  std::string packetBody;
+  std::visit(
+      [&packetBody](auto &&p) {
+        using T = std::decay_t<decltype(p)>;
+        if constexpr (HasCustomSerialization<T>) {
+          static_assert(
+              HasCustomDeserialization<T>,
+              "Has custom serialization but doesn't have deserialization");
+
+          packetBody.append(p.serialize());
+        } else {
+          char buf[sizeof(T)] = {0};
+          std::memcpy(buf, &p, sizeof(T));
+          packetBody.append(buf, sizeof(T));
+        }
+      },
+      packet);
+
+  return packetBody;
+}
+
 template <class VARIANT, PacketType INDEX = 0>
-VARIANT variantFromIndex(PacketType index, const std::string &data) {
+VARIANT deserializePacket(PacketType index, const std::string &data) {
   if constexpr (INDEX < std::variant_size_v<VARIANT>) {
     if (index == INDEX) {
       using alt = std::variant_alternative_t<INDEX, VARIANT>;
       LOG_DEBUG("DATA_SIZE: ", data.size());
       LOG_DEBUG("altSize: ", sizeof(alt));
-      ASSERT(data.size() == sizeof(alt));
       alt obj;
 
-      std::memcpy(&obj, data.data(), sizeof(alt));
+      if constexpr (HasCustomDeserialization<alt>) {
+        static_assert(
+            HasCustomSerialization<alt>,
+            "Has custom Deserialization but doesn't have Serialization");
+
+        obj.serialize(data);
+      } else {
+        ASSERT(data.size() == sizeof(alt));
+        std::memcpy(&obj, data.data(), sizeof(alt));
+      }
 
       return VARIANT{std::move(obj)};
     } else {
-      return variantFromIndex<VARIANT, INDEX + 1>(index, data);
+      return deserializePacket<VARIANT, INDEX + 1>(index, data);
     }
   } else {
     throw std::out_of_range("Invalid variant index");
@@ -99,15 +141,7 @@ parseHeader(const std::string &packet) {
 } // namespace internal
 
 template <class PACKET> std::string encodePacket(const PACKET &packet) {
-  std::string body;
-  std::visit(
-      [&body](auto &&p) {
-        using T = std::decay_t<decltype(p)>;
-        char buf[sizeof(T)] = {0};
-        std::memcpy(buf, &p, sizeof(T));
-        body.append(buf, sizeof(T));
-      },
-      packet);
+  std::string body = internal::serializePacket(packet);
 
   std::string msg = internal::createPacketHeader(
       (internal::PacketType)packet.index(), body.size());
@@ -148,11 +182,12 @@ std::optional<VARIANT> decodePacket(const std::string &packet) {
   ASSERT(bodysize == length &&
          "Packet content length is equal to specified in header");
 
-  const std::string &body = packet.data() + internal::HEADER_LENGTH_BYTES;
+  const std::string &body =
+      packet.substr(internal::HEADER_LENGTH_BYTES, std::string::npos);
 
   LOG_DEBUG("Body size: ", body.size());
 
-  auto decoded = internal::variantFromIndex<VARIANT>(type, body);
+  auto decoded = internal::deserializePacket<VARIANT>(type, body);
 
   return decoded;
 }

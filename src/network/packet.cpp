@@ -4,9 +4,13 @@
 namespace network {
 
 void printBytes(std::string s) {
+
+  std::ios_base::fmtflags f(std::cout.flags());
+
   for (char c : s) {
     std::cout << std::hex << std::setfill('0') << std::setw(2) << (int)c << " ";
   }
+  std::cout.flags(f);
   std::cout << std::endl;
 }
 
@@ -38,5 +42,6 @@ std::string createPacketHeader(PacketType type,
 
   return header;
 }
+
 } // namespace internal
 } // namespace network

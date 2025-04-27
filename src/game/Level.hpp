@@ -38,10 +38,16 @@ struct Level {
   constexpr static int MAP_HEIGHT = 32;
 
   // Number of pixels taken by each tile (square tiles)
-  constexpr static int TILE_SIZE = 32;
+  constexpr static int TILE_SIZE = 16;
 
-  typedef std::array<TileType, MAP_WIDTH * MAP_HEIGHT> MapData;
+  typedef std::array<TileType, MAP_WIDTH * MAP_HEIGHT> TileData;
 
+  struct MapData {
+    uint8_t id;
+    TileData tiles;
+  };
+
+  Level();
   Level(const MapData &initalMap);
   ~Level();
 
@@ -49,6 +55,9 @@ struct Level {
   void loadLevel(const MapData &data);
   void update(GameWorld &world);
 
+  const MapData &getMapData() const;
+
+  uint8_t m_currentMapID = 0;
   std::array<Tile, MAP_WIDTH * MAP_HEIGHT> tiles;
 
   const static MapData Map1Data;

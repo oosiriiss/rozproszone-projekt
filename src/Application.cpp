@@ -72,9 +72,11 @@ void Application::run(bool isServer) {
   uint16_t port = 63921;
 
   if (isServer)
-    m_sceneManager.pushScene(new ConnectServerScene(IP, port, m_sceneManager));
+    m_sceneManager.pushScene(
+        new ConnectServerScene(IP, port, m_sceneManager, m_window));
   else
-    m_sceneManager.pushScene(new ConnectClientScene(IP, port, m_sceneManager));
+    m_sceneManager.pushScene(
+        new ConnectClientScene(IP, port, m_sceneManager, m_window));
 
   while (m_window.isOpen()) {
     if (SIGINT_RECEIVED)
