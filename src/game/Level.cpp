@@ -2,7 +2,7 @@
 #include <array>
 #include <cstring>
 
-#include "../assert.hpp"
+#include "../debug.hpp"
 #include "Level.hpp"
 
 Tile::Tile() : rect(), type(TileType::Count) {}

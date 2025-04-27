@@ -82,7 +82,7 @@ public:
   void draw() override;
 
 private:
-  network::Client m_client;
+  std::shared_ptr<network::Client> m_client;
 };
 
 class ServerGameScene : public Scene {
@@ -94,5 +94,5 @@ public:
   void draw() override;
 
 private:
-  network::Server server;
+  std::shared_ptr<network::Server> m_server;
 };

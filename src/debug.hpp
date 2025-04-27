@@ -1,3 +1,4 @@
+#pragma once
 
 #ifdef DEBUG_BUILD
 #include <iostream>
@@ -15,7 +16,10 @@ constexpr void __assertFail(const char *file, int line,
 #define UNREACHABLE                                                            \
   ASSERT(false && "UNREACHABLE CODE REACHED");                                 \
   std::unreachable();
+
+#define DEBUG_ONLY(x) x
 #else
 #define ASSERT(expr)
 #define UNREACHABLE std::unreachable();
+#define DEBUG_ONLY(x)
 #endif

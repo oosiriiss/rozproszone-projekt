@@ -1,5 +1,5 @@
 #include "Scene.hpp"
-#include "assert.hpp"
+#include "debug.hpp"
 #include "logging.hpp"
 #include "network/packet.hpp"
 #include "ui/ui.hpp"
@@ -98,10 +98,10 @@ void ConnectServerScene::update() {
     }
   }
 
-  if (m_connectedPlayerCount == 2) {
-      m_server->sendAll(network::ServerPacket packet)
-    m_sceneManager.pushScene(new ServerGameScene(m_server));
-  }
+  // if (m_connectedPlayerCount == 2) {
+  //   m_server->sendAll();
+  //   m_sceneManager.pushScene(new ServerGameScene(m_server));
+  // }
 }
 void ConnectServerScene::draw() {
   ui::Text(" ");
@@ -124,8 +124,16 @@ void ConnectServerScene::draw() {
   }
 }
 
-GameScene::GameScene() {}
-GameScene::~GameScene() {}
+ClientGameScene::ClientGameScene(std::shared_ptr<network::Client> client)
+    : m_client(client) {}
+ClientGameScene::~ClientGameScene() {}
 
-void GameScene::update() {}
-void GameScene::draw() {}
+void ClientGameScene::update() {}
+void ClientGameScene::draw() {}
+
+ServerGameScene::ServerGameScene(std::shared_ptr<network::Server> server)
+    : m_server(server) {}
+ServerGameScene::~ServerGameScene() {}
+
+void ServerGameScene::update() {}
+void ServerGameScene::draw() {}

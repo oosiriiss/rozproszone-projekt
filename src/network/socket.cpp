@@ -167,8 +167,8 @@ std::expected<Socket, SocketError> Socket::accept() {
 // TODO :: MERGe this with receive
 std::optional<std::string> Socket::nextMessage() {
 
-  constexpr auto separator = network::SEPARATOR;
-  constexpr auto separatorSize = sizeof(network::SEPARATOR);
+  constexpr auto separator = network::internal::SEPARATOR;
+  constexpr auto separatorSize = sizeof(network::internal::SEPARATOR);
 
   if (this->currentData.size() <= separatorSize)
     return std::nullopt;
@@ -182,6 +182,8 @@ std::optional<std::string> Socket::nextMessage() {
   // Copying the message
   // Starting is also the length of current message
   std::string msg = std::string(this->currentData.substr(0, startIndex));
+
+  DEBUG_ONLY(printBytes(msg));
 
   // Moving the internal buffer to the next message
   const auto startOfNextMessage = startIndex + separatorSize;

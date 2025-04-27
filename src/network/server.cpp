@@ -126,7 +126,7 @@ Server::pollMessage() {
   for (Socket &client : m_clients) {
 
     if (auto x = client.nextMessage()) {
-      auto packet = network::decodeClientPacket(*x);
+      auto packet = network::decodePacket<network::ClientPacket>(*x);
       if (!packet.has_value()) {
         LOG_ERROR("Couldn't decode client packet");
         continue;

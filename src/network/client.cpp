@@ -1,5 +1,4 @@
 #include <arpa/inet.h>
-#include <atomic>
 #include <cstring>
 #include <netinet/in.h>
 #include <optional>
@@ -75,7 +74,7 @@ std::optional<network::ServerPacket> Client::pollMessage() {
   if (!msg.has_value())
     return std::nullopt;
 
-  auto packet = network::decodeServerPacket(*msg);
+  auto packet = network::decodePacket<network::ServerPacket>(*msg);
 
   if (!packet.has_value())
     LOG_ERROR("Couldn't serve packet");
