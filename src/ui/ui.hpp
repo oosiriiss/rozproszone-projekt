@@ -8,24 +8,11 @@
 #include <SFML/Main.hpp>
 #include <SFML/System/Vector2.hpp>
 #include <cstdint>
-#include <functional>
 
 #include "../AssetManager.hpp"
 
 namespace ui {
 
-#ifdef DEBUG_BUILD
-#define DEBUG_OUTLINE(pos, size)                                               \
-  sf::RectangleShape rect;                                                     \
-  rect.setPosition(pos);                                                       \
-  rect.setSize(size);                                                          \
-  rect.setFillColor(sf::Color::Transparent);                                   \
-  rect.setOutlineColor(sf::Color::Red);                                        \
-  rect.setOutlineThickness(1.f);                                               \
-  g_UIContext.window->draw(rect);
-#else
-#define DEBUG_OUTLINE(pos, size)
-#endif
 typedef int32_t ComponentID;
 
 struct Context {

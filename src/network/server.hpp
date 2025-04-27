@@ -20,6 +20,8 @@ struct Server {
   //
   std::optional<std::pair<Socket *, network::ClientPacket>> pollMessage();
   std::optional<SocketError> sendAll(network::ServerPacket packet);
+  std::optional<SocketError> sendOthers(const Socket *client,
+                                        network::ServerPacket packet);
   std::optional<SocketError> send(Socket *client, network::ServerPacket packet);
   // Read all pending data from sockets
 

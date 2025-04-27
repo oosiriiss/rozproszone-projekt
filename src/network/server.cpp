@@ -73,12 +73,37 @@ std::optional<SocketError> Server::sendAll(network::ServerPacket packet) {
     Socket &client = m_clients[i];
 
     auto err = client.send(msg.c_str(), len);
+
     if (err) {
+      LOG_ERROR("SendAll client error", std::to_underlying(*err));
       if (err == SocketError::Disconnected) {
         LOG_INFO("Client disconnected");
         m_clients.erase(m_clients.begin() + i);
       }
+      return *err;
+    }
+  }
+  return std::nullopt;
+}
+std::optional<SocketError> Server::sendOthers(const Socket *client,
+                                              network::ServerPacket packet) {
+  auto msg = encodePacket(packet);
+  size_t len = msg.size();
 
+  int clients = m_clients.size();
+  for (int i = clients - 1; i >= 0; --i) {
+    Socket &current = m_clients[i];
+
+    if (client->fd == current.fd)
+      continue;
+
+    auto err = current.send(msg.c_str(), len);
+    if (err) {
+      LOG_ERROR("SendOthers client error", std::to_underlying(*err));
+      if (err == SocketError::Disconnected) {
+        LOG_INFO("Client disconnected");
+        m_clients.erase(m_clients.begin() + i);
+      }
       return *err;
     }
   }

@@ -1,15 +1,18 @@
 #pragma once
 
+#include "Enemy.hpp"
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
-#include <initializer_list>
+#include <cstdint>
 
 class GameWorld;
 
 enum class TileType : int {
   //
-  Ground,
-  Wall,
+  Ground = 0,
+  Wall = 1,
+  PlayerStart = 2,
+  EnemySpawner = 3,
   Count // Helper to easily find the number of elements in enum Should be always
         // last
 };
@@ -53,12 +56,18 @@ struct Level {
 
   void draw(sf::RenderWindow &window) const;
   void loadLevel(const MapData &data);
-  void update(GameWorld &world);
+  void update(float dt);
 
+  sf::Vector2f getPlayerStartPos() const;
   const MapData &getMapData() const;
 
   uint8_t m_currentMapID = 0;
-  std::array<Tile, MAP_WIDTH * MAP_HEIGHT> tiles;
 
   const static MapData Map1Data;
+
+private:
+  std::array<Tile, MAP_WIDTH * MAP_HEIGHT> m_tiles;
+
+  std::vector<EnemySpawner> m_spawners;
+  std::vector<Enemy> m_enemies;
 };

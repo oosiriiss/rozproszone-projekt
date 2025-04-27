@@ -6,6 +6,7 @@
 #include "network/server.hpp"
 #include <memory>
 #include <stack>
+#include <unordered_map>
 
 class SceneManager;
 
@@ -18,7 +19,7 @@ struct Scene {
   Scene(SCENE_PARAMS);
   virtual ~Scene() = default;
 
-  virtual void update() = 0;
+  virtual void update(float dt) = 0;
   virtual void draw() = 0;
 
 protected:
@@ -49,7 +50,7 @@ public:
   ConnectClientScene(const char *ip, uint16_t port, SCENE_PARAMS);
   ~ConnectClientScene();
 
-  void update() override;
+  void update(float dt) override;
   void draw() override;
 
   const char *targetIP;
@@ -70,7 +71,7 @@ public:
   ConnectServerScene(const char *ip, uint16_t port, SCENE_PARAMS);
   ~ConnectServerScene();
 
-  void update() override;
+  void update(float dt) override;
   void draw() override;
 
   const char *bindIP;
@@ -89,14 +90,18 @@ public:
   ClientGameScene(std::shared_ptr<network::Client> client, SCENE_PARAMS);
   ~ClientGameScene();
 
-  void update() override;
+  void update(float dt) override;
   void draw() override;
 
 private:
   std::shared_ptr<network::Client> m_client;
   Level m_level;
   Player m_player;
+  std::unordered_map<uint8_t, Player> m_otherPlayers;
   bool m_isInitialized = false;
+
+  float m_playerSyncTimer = 0.f;
+  float FULL_SYNC_THRESHOLD = 1.f;
 };
 
 class ServerGameScene : public Scene {
@@ -104,7 +109,7 @@ public:
   ServerGameScene(std::shared_ptr<network::Server> server, SCENE_PARAMS);
   ~ServerGameScene();
 
-  void update() override;
+  void update(float dt) override;
   void draw() override;
 
 private:
@@ -112,4 +117,8 @@ private:
   Level m_level;
 
   uint8_t m_currentPlayerID = 0;
+
+  std::unordered_map<uint8_t, Player> m_players;
+
+  float m_fullSyncTimer = 0.f;
 };

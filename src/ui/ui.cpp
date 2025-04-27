@@ -9,6 +9,8 @@
 #include <SFML/System/Vector2.hpp>
 #include <string_view>
 
+#include "../debug.hpp"
+
 namespace ui {
 
 void Context::init(sf::RenderWindow *window, const AssetManager *m) {
@@ -94,7 +96,7 @@ bool Button(std::string_view text) {
   sf::Vector2f textSize = Context::measureText(t);
   sf::Vector2f pos = g_UIContext.nextPos(textSize);
 
-  DEBUG_OUTLINE(pos, textSize);
+  DEBUG_OUTLINE_PTR(g_UIContext.window, pos, textSize);
 
   t.setPosition(pos);
 
@@ -113,7 +115,7 @@ void Text(std::string_view text) {
   sf::Vector2f textSize = Context::measureText(t);
   sf::Vector2f pos = g_UIContext.nextPos(textSize);
 
-  DEBUG_OUTLINE(pos, textSize);
+  DEBUG_OUTLINE_PTR(g_UIContext.window, pos, textSize);
 
   t.setPosition(pos);
 

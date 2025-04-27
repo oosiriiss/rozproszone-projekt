@@ -10,8 +10,7 @@ struct Player {
   Player(uint8_t id);
 
   void draw(sf::RenderWindow &window) const;
-  void update(GameWorld &world);
-  void handleKeydown(sf::Keyboard::Key k);
+  void update();
 
   sf::RectangleShape rect;
   uint8_t id;

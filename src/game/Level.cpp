@@ -30,48 +30,75 @@ sf::Color Tile::getColor(TileType type) {
     return sf::Color(88, 57, 39);
   case TileType::Wall:
     return sf::Color(120, 120, 120);
+  case TileType::PlayerStart:
+    return sf::Color::Green;
+    break;
+  case TileType::EnemySpawner:
+    return sf::Color(180, 120, 120);
+    break;
   case TileType::Count:
     ASSERT(!"unreachable");
     return sf::Color(0, 0, 0, 0);
   }
 }
 
-Level::Level() : tiles{} {
+Level::Level() : m_tiles{} {
 
   LOG_INFO("Loading default level data");
   loadLevel(this->Map1Data);
 }
-Level::Level(const MapData &tilemap) : tiles({}) { loadLevel(tilemap); }
+Level::Level(const MapData &tilemap) : m_tiles({}) { loadLevel(tilemap); }
 Level::~Level() { LOG_INFO("Destroying level"); }
 
 void Level::draw(sf::RenderWindow &window) const {
-  for (const auto &tile : this->tiles) {
+  for (const auto &tile : this->m_tiles) {
     window.draw(tile.rect);
+  }
+  for (const auto &e : m_enemies) {
+    e.draw(window);
   }
 }
 
 void Level::loadLevel(const Level::MapData &data) {
-  ASSERT(this->tiles.max_size() == data.tiles.max_size());
+  ASSERT(this->m_tiles.max_size() == data.tiles.max_size());
 
   this->m_currentMapID = data.id;
 
   LOG_DEBUG("Loading level: ", (int)data.id);
 
-  for (int i = 0; i < tiles.max_size(); ++i) {
+  for (int i = 0; i < m_tiles.max_size(); ++i) {
 
     const int col = i % MAP_WIDTH;
-    const int row = i / MAP_HEIGHT;
+    const int row = i / MAP_WIDTH;
 
     const int x = col * TILE_SIZE;
     const int y = row * TILE_SIZE;
 
-    this->tiles[i] = Tile(x, y, Level::TILE_SIZE, data.tiles[i]);
+    TileType tile = data.tiles[i];
+
+    this->m_tiles[i] = Tile(x, y, Level::TILE_SIZE, tile);
+
+    if (tile == TileType::EnemySpawner) {
+      m_spawners.push_back(EnemySpawner(10, 3.f, [this, x, y]() {
+        LOG_DEBUG("Spawning enemy");
+        m_enemies.push_back(Enemy(x, y));
+      }));
+    }
   }
 
   LOG_DEBUG("Level loaded");
 }
 
-void Level::update(GameWorld &world) {}
+void Level::update(float dt) {
+
+  for (auto &s : m_spawners) {
+    s.update(dt);
+  }
+
+  for (auto &e : m_enemies) {
+    e.update(dt);
+  }
+}
 
 constexpr std::array<TileType, Level::MAP_WIDTH * Level::MAP_HEIGHT>
 idsToTypes(const std::array<int, Level::MAP_HEIGHT * Level::MAP_HEIGHT> &ids) {
@@ -83,6 +110,22 @@ idsToTypes(const std::array<int, Level::MAP_HEIGHT * Level::MAP_HEIGHT> &ids) {
     arr[i] = static_cast<TileType>(ids[i]);
   }
   return arr;
+}
+
+sf::Vector2f Level::getPlayerStartPos() const {
+
+  int i = 0;
+
+  for (const Tile &t : this->m_tiles) {
+
+    if (t.type == TileType::PlayerStart)
+      return sf::Vector2f{static_cast<float>((i % MAP_WIDTH) * TILE_SIZE),
+                          static_cast<float>((i / MAP_WIDTH) * TILE_SIZE)};
+
+    i = i + 1;
+  }
+
+  UNREACHABLE;
 }
 
 const Level::MapData &Level::getMapData() const {
@@ -99,7 +142,7 @@ const Level::MapData Level::Map1Data = {
    .tiles = idsToTypes({
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+   0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,1,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,1,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -108,7 +151,7 @@ const Level::MapData Level::Map1Data = {
    0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-   0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+   0,0,0,0,0,0,0,0,0,0,0,0,1,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -124,7 +167,7 @@ const Level::MapData Level::Map1Data = {
    0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+   0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,

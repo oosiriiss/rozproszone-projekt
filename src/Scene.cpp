@@ -39,7 +39,7 @@ ConnectClientScene::ConnectClientScene(const char *ip, uint16_t port,
       m_client(std::make_shared<network::Client>()) {}
 ConnectClientScene::~ConnectClientScene() {}
 
-void ConnectClientScene::update() {
+void ConnectClientScene::update(float dt) {
 
   if (m_isConnected) {
     while (auto msg = m_client->pollMessage()) {
@@ -83,7 +83,7 @@ ConnectServerScene::ConnectServerScene(const char *ip, uint16_t port,
     : SCENE_CONSTRUCTOR, bindIP(ip), bindPort(port),
       m_server(std::make_shared<network::Server>()) {}
 ConnectServerScene::~ConnectServerScene() {}
-void ConnectServerScene::update() {
+void ConnectServerScene::update(float dt) {
 
   if (!m_isBound)
     return;
@@ -142,23 +142,48 @@ ClientGameScene::ClientGameScene(std::shared_ptr<network::Client> client,
 }
 ClientGameScene::~ClientGameScene() {}
 
-void ClientGameScene::update() {
+void ClientGameScene::update(float dt) {
+  m_playerSyncTimer += dt;
 
   while (auto msg = m_client->pollMessage()) {
     auto packet = *msg;
     if (auto *grr = std::get_if<network::GameReadyResponse>(&packet)) {
       m_level = Level(grr->map);
       m_player = Player(grr->playerID);
-
+      m_player.rect.setPosition(grr->playerPos);
       m_isInitialized = true;
+      m_client->send(network::FullPlayerSyncRequest{
+          .playerID = m_player.id, .playerPos = m_player.rect.getPosition()});
+    } else if (auto *fpsr =
+                   std::get_if<network::FullPlayerSyncResponse>(&packet)) {
+
+      if (m_otherPlayers.find(fpsr->playerID) == m_otherPlayers.end()) {
+        m_otherPlayers[fpsr->playerID] = Player(fpsr->playerID);
+      }
+
+      Player &o = m_otherPlayers.at(fpsr->playerID);
+      o.rect.setPosition(fpsr->playerPos);
     }
+  }
+
+  m_player.update();
+  m_level.update(dt);
+
+  if (m_playerSyncTimer > FULL_SYNC_THRESHOLD) {
+    m_playerSyncTimer = 0.f;
+    m_client->send(network::FullPlayerSyncRequest{
+        .playerID = m_player.id, .playerPos = m_player.rect.getPosition()});
   }
 }
 void ClientGameScene::draw() {
-
   if (m_isInitialized) {
     m_level.draw(m_window);
     m_player.draw(m_window);
+
+    for (const auto &e : m_otherPlayers) {
+      e.second.draw(m_window);
+    }
+
   } else {
     ui::Text("Waiting for initialization...");
   }
@@ -173,20 +198,45 @@ ServerGameScene::ServerGameScene(std::shared_ptr<network::Server> server,
 }
 ServerGameScene::~ServerGameScene() {}
 
-void ServerGameScene::update() {
+void ServerGameScene::update(float dt) {
 
   while (auto sockmsg = m_server->pollMessage()) {
     auto [socket, packet] = *sockmsg;
 
     if (auto *grr = std::get_if<network::GameReadyRequest>(&packet)) {
       LOG_INFO("Sending initalization packet");
-      m_server->send(socket,
-                     network::GameReadyResponse{.playerID = m_currentPlayerID++,
-                                                .map = m_level.getMapData()});
+      Player p = Player(m_currentPlayerID++);
+      p.rect.setPosition(m_level.getPlayerStartPos());
+      m_players[p.id] = p;
+      m_server->send(
+          socket, network::GameReadyResponse{.playerID = p.id,
+                                             .playerPos = p.rect.getPosition(),
+                                             .map = m_level.getMapData()});
       LOG_INFO("Initialization packet sent");
+    } else if (auto *fpsr =
+                   std::get_if<network::FullPlayerSyncRequest>(&packet)) {
+
+      ASSERT(m_players.find(fpsr->playerID) != m_players.end() &&
+             "Player with id not found");
+
+      Player &p = m_players.at(fpsr->playerID);
+
+      p.rect.setPosition(fpsr->playerPos);
+
+      auto e = m_server->sendOthers(
+          socket, network::FullPlayerSyncResponse{
+                      .playerID = p.id, .playerPos = p.rect.getPosition()});
+
     } else {
       LOG_ERROR("Unknown packet encountered");
     }
   }
+
+  m_level.update(dt);
 }
-void ServerGameScene::draw() {}
+void ServerGameScene::draw() {
+  m_level.draw(m_window);
+  for (const auto &p : m_players) {
+    p.second.draw(m_window);
+  }
+}

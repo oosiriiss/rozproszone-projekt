@@ -24,7 +24,6 @@ set(SOURCES
    src/Scene.cpp
    src/game/Player.cpp
    src/game/Enemy.cpp
-   src/game/GameWorld.cpp
    src/game/Level.cpp
    src/network/socket.cpp
    src/network/server.cpp

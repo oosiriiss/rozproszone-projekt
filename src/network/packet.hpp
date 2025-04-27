@@ -20,30 +20,29 @@ struct GameReadyRequest {};
 
 struct GameReadyResponse {
   uint8_t playerID;
+  sf::Vector2f playerPos;
   Level::MapData map;
 
   // std::string serialize() const;
   // void deserialize(std::string_view body);
 };
 
-struct PlayerMovedRequest {
-  uint8_t playerId;
-  float x;
-  float y;
+struct FullPlayerSyncRequest {
+  uint8_t playerID;
+  sf::Vector2f playerPos;
 };
 
-struct PlayerMovedResponse {
-  uint8_t playerId;
-  float x;
-  float y;
+struct FullPlayerSyncResponse {
+  uint8_t playerID;
+  sf::Vector2f playerPos;
 };
 
 // TODO :: Change this to inheritance?
-typedef std::variant<JoinLobbyRequest, PlayerMovedRequest, GameReadyRequest>
+typedef std::variant<JoinLobbyRequest, GameReadyRequest, FullPlayerSyncRequest>
     ClientPacket;
 // TODO :: Change this to inheritance?
-typedef std::variant<JoinLobbyResponse, StartGameResponse, PlayerMovedResponse,
-                     GameReadyResponse>
+typedef std::variant<JoinLobbyResponse, StartGameResponse, GameReadyResponse,
+                     FullPlayerSyncResponse>
     ServerPacket;
 
 template <class PACKET> std::string encodePacket(const PACKET &packet);

@@ -1,6 +1,7 @@
 #include "socket.hpp"
 #include "../logging.hpp"
 #include "packet.hpp"
+#include <SFML/System/Err.hpp>
 #include <arpa/inet.h>
 #include <cerrno>
 #include <csignal>
@@ -112,8 +113,8 @@ std::optional<SocketError> Socket::send(const char *msg, uint32_t msglen) {
 
   // Is this necessary?
   if (r < 0) {
-    LOG_ERROR("SEND ERROR");
-    return errnoToSocketError();
+    LOG_ERROR("SEND ERROR: ");
+    return printSocketError(errnoToSocketError());
   }
   return std::nullopt;
 }
