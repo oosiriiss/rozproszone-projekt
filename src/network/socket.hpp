@@ -32,10 +32,6 @@ struct Socket {
   std::string currentData;
   ;
 
-  /*
-   * Creates socket using IPv4 protocol of type TCP or UDP
-   * prints the error message using LOG_ERROR
-   */
   [[nodiscard]] static std::expected<Socket, SocketError>
   create(const char *addr, uint16_t port, SocketType type = SocketType::TCP,
          int socketFlags = 0) noexcept;
@@ -47,15 +43,6 @@ struct Socket {
   // valid only if the socket is server
   std::expected<Socket, SocketError> accept();
 
-  // ????? is this the right approach ????
-  // User should manually use receive to read the data from the socket and then
-  // use nextMessage returns all the bytes unitl separator or empty string if
-  // none is available
-  //
-  // You can check if message is avaiable with Socket::hasMessage
-  //
-  // Allocates new buffer for current message <-- ??? is this good
-  // Returns currnet message, and moves the buffer to the next one
   std::optional<std::string> nextMessage();
 
   bool setBlocking(bool shouldBlock);

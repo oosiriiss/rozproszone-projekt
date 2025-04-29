@@ -152,6 +152,7 @@ Server::pollMessage() {
 
     if (auto x = client.nextMessage()) {
       auto packet = network::decodePacket<network::ClientPacket>(*x);
+      LOG_DEBUG("Packet decoded");
       if (!packet.has_value()) {
         LOG_ERROR("Couldn't decode client packet");
         continue;

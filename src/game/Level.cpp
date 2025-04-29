@@ -79,8 +79,8 @@ void Level::loadLevel(const Level::MapData &data) {
     this->m_tiles[i] = Tile(x, y, Level::TILE_SIZE, tile);
 
     if (tile == TileType::EnemySpawner) {
-      m_spawners.push_back(EnemySpawner(10, 3.f, [this, x, y]() {
-        LOG_DEBUG("Spawning enemy");
+      m_spawners.push_back(EnemySpawner(2, 3.f, [this, x, y]() {
+        //LOG_DEBUG("Spawning enemy");
         m_enemies.push_back(Enemy(x, y));
       }));
     }
@@ -171,7 +171,7 @@ const Level::MapData Level::Map1Data = {
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
    })
 };
 // clang-format on

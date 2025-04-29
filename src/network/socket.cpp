@@ -120,8 +120,6 @@ std::optional<SocketError> Socket::send(const char *msg, uint32_t msglen) {
 }
 
 std::optional<SocketError> Socket::receive() {
-  // TODO :: Make this read whole socket data
-  // Is this necessary?
 
   if (this->fd == INVALID_SOCKET_DESCRIPTOR) {
     LOG_ERROR("Invalid socket descriptor");
@@ -131,7 +129,8 @@ std::optional<SocketError> Socket::receive() {
 
   int bytesRead = 0;
 
-  while (int bytesRead = recv(this->fd, &buf[0], buf.size(), 0)) {
+  while (true) {
+    int bytesRead = recv(this->fd, &buf[0], buf.size(), 0);
     if (bytesRead <= 0) {
       SocketError e = errnoToSocketError();
       if (e == SocketError::WouldBlock)
@@ -174,20 +173,20 @@ std::optional<std::string> Socket::nextMessage() {
   if (this->currentData.size() <= separatorSize)
     return std::nullopt;
 
-  const int startIndex = this->currentData.find(separator, 0, separatorSize);
-  if (startIndex == std::string::npos) {
+  const int sepIndex = this->currentData.find(separator, 0, separatorSize);
+  if (sepIndex == std::string::npos) {
     LOG_ERROR("No separator found in (", std::string(separator, 4), ")");
     return std::nullopt;
   }
 
+  LOG_DEBUG("Sep message: ", sepIndex);
+
   // Copying the message
   // Starting is also the length of current message
-  std::string msg = std::string(this->currentData.substr(0, startIndex));
-
-  DEBUG_ONLY(printBytes(msg));
+  std::string msg = std::string(this->currentData.substr(0, sepIndex));
 
   // Moving the internal buffer to the next message
-  const auto startOfNextMessage = startIndex + separatorSize;
+  const auto startOfNextMessage = sepIndex + separatorSize;
   this->currentData.erase(0, startOfNextMessage);
 
   return msg;

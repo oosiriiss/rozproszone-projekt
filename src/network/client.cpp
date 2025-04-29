@@ -64,7 +64,7 @@ std::optional<SocketError> Client::receive() {
 }
 
 std::optional<network::ServerPacket> Client::pollMessage() {
-
+  LOG_DEBUG("Polling client");
   if (receive()) {
     LOG_ERROR("Receive failed");
   }
@@ -76,8 +76,10 @@ std::optional<network::ServerPacket> Client::pollMessage() {
 
   auto packet = network::decodePacket<network::ServerPacket>(*msg);
 
-  if (!packet.has_value())
-    LOG_ERROR("Couldn't serve packet");
+  if (!packet.has_value()) {
+    LOG_ERROR("Couldn't decode server packet");
+    return std::nullopt;
+  }
 
   return packet;
 }

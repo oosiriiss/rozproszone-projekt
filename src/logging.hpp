@@ -19,5 +19,5 @@
 #define LOG_INFO(...) log("[", "\033[34m", "INFO", "\033[0m", "] ", __VA_ARGS__)
 
 template <typename... ARGS> constexpr void log(ARGS... args) {
-  (std::cout << ... << args) << '\n';
+  (std::cout << ... << args) << std::endl;
 }

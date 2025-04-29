@@ -98,6 +98,7 @@ private:
   Level m_level;
   Player m_player;
   std::unordered_map<uint8_t, Player> m_otherPlayers;
+
   bool m_isInitialized = false;
 
   float m_playerSyncTimer = 0.f;
@@ -116,9 +117,7 @@ private:
   std::shared_ptr<network::Server> m_server;
   Level m_level;
 
-  uint8_t m_currentPlayerID = 0;
-
-  std::unordered_map<uint8_t, Player> m_players;
+  std::unordered_map<int32_t, Player> m_players;
 
   float m_fullSyncTimer = 0.f;
 };

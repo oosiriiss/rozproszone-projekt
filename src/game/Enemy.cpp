@@ -36,7 +36,7 @@ EnemySpawner::~EnemySpawner() {}
 void EnemySpawner::update(float dt) {
   m_spawnTimer += dt;
 
-  if (m_spawnTimer >= m_spawnDelaySeconds) {
+  if (m_leftToSpawn > 0 && m_spawnTimer >= m_spawnDelaySeconds) {
     m_spawn();
 
     --m_leftToSpawn;

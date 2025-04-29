@@ -11,7 +11,7 @@
 
 namespace network {
 
-void printBytes(std::string s);
+void printBytes(const std::string &s);
 
 namespace internal {
 
@@ -33,6 +33,8 @@ constexpr int32_t HEADER_LENGTH_BYTES =
 
 std::string createPacketHeader(PacketType type,
                                PacketContentLength contentLength);
+
+void printPacket(const std::string &s);
 
 template <typename T>
 concept HasCustomSerialization = requires(T t) {
@@ -111,30 +113,17 @@ parseHeader(const std::string &packet) {
     return std::unexpected(PacketError::InvalidVersion);
   }
 
-  std::string typeSubstring =
-      packet.substr(sizeof(VERSION), sizeof(PacketType));
-
   PacketType type = 0;
-
-  for (int i = sizeof(PacketType) - 1; i >= 0; --i) {
-    type = type << 8;
-    type += typeSubstring[i];
-  }
-
-  std::string contentLengthSubstr = packet.substr(
-      sizeof(VERSION) + sizeof(PacketType), sizeof(PacketContentLength));
+  std::memcpy(&type, packet.data() + sizeof(VERSION), sizeof(type));
 
   if (type >= std::variant_size_v<VARIANT> || type < 0) {
     LOG_ERROR("Invalid packet type: ", type);
     return std::unexpected(PacketError::InvalidType);
   }
-
   PacketContentLength length = 0;
 
-  for (int i = sizeof(PacketContentLength) - 1; i >= 0; --i) {
-    length = length << 8;
-    length += contentLengthSubstr[i];
-  }
+  std::memcpy(&length, packet.data() + sizeof(VERSION) + sizeof(type),
+              sizeof(length));
 
   return HeaderParseResult{.type = type, .contentLength = length};
 }
@@ -143,18 +132,19 @@ parseHeader(const std::string &packet) {
 template <class PACKET> std::string encodePacket(const PACKET &packet) {
   std::string body = internal::serializePacket(packet);
 
+  LOG_DEBUG("Body size bytes: ", body.size());
+
   std::string msg = internal::createPacketHeader(
       (internal::PacketType)packet.index(), body.size());
+
+  LOG_DEBUG("Encoded Header bytes:");
+  DEBUG_ONLY(printBytes(msg));
 
   LOG_DEBUG("Packet index: ", packet.index(), " body size: ", body.size());
   msg.append(body);
   msg.append(internal::SEPARATOR, sizeof(internal::SEPARATOR));
 
-  LOG_DEBUG("Body bytes:");
-  DEBUG_ONLY(printBytes(body));
-
-  LOG_DEBUG("Encoded bytes");
-  DEBUG_ONLY(printBytes(msg));
+  DEBUG_ONLY(internal::printPacket(msg));
   LOG_DEBUG("Encoded message size (with separator): ", msg.size());
 
   return msg;
@@ -162,8 +152,7 @@ template <class PACKET> std::string encodePacket(const PACKET &packet) {
 template <class VARIANT>
 std::optional<VARIANT> decodePacket(const std::string &packet) {
 
-  LOG_DEBUG("Packet bytes:");
-  DEBUG_ONLY(printBytes(packet));
+  DEBUG_ONLY(internal::printPacket(packet));
 
   auto headerResult = internal::parseHeader<VARIANT>(packet);
 
@@ -172,8 +161,14 @@ std::optional<VARIANT> decodePacket(const std::string &packet) {
     return std::nullopt;
   }
 
+  LOG_DEBUG("Decoded header bytes:");
+
+  DEBUG_ONLY(printBytes(packet.substr(0, internal::HEADER_LENGTH_BYTES)));
+
   internal::PacketType type = (*headerResult).type;
   internal::PacketContentLength length = (*headerResult).contentLength;
+
+  LOG_DEBUG("Decoded contenetlength: ", length);
 
   const uint32_t bodysize = packet.size() - internal::HEADER_LENGTH_BYTES;
 
@@ -188,6 +183,8 @@ std::optional<VARIANT> decodePacket(const std::string &packet) {
   LOG_DEBUG("Body size: ", body.size());
 
   auto decoded = internal::deserializePacket<VARIANT>(type, body);
+
+  LOG_DEBUG("Packet decoded");
 
   return decoded;
 }

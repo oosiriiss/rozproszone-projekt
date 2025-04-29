@@ -9,7 +9,7 @@ Player::Player() : rect(), id() {
   this->rect.setSize({Level::TILE_SIZE, Level::TILE_SIZE});
   this->rect.setFillColor(sf::Color::Red);
 }
-Player::Player(uint8_t id) : id(id), rect() {
+Player::Player(int32_t id) : id(id), rect() {
   this->rect.setSize({Level::TILE_SIZE, Level::TILE_SIZE});
   this->rect.setFillColor(sf::Color::Red);
 }
@@ -18,18 +18,20 @@ void Player::draw(sf::RenderWindow &window) const {
   window.draw(this->rect);
   DEBUG_OUTLINE(window, rect.getPosition(), rect.getSize());
 }
-void Player::update() {
 
-  if (Application::isKeyPressed(sf::Keyboard::Key::W)) {
+void Player::move(Direction dir) {
+  if (dir == Direction::Up) {
     this->rect.move({0, -1.f});
   }
-  if (Application::isKeyPressed(sf::Keyboard::Key::S)) {
+  if (dir == Direction::Down) {
     this->rect.move({0, 1.f});
   }
-  if (Application::isKeyPressed(sf::Keyboard::Key::A)) {
+  if (dir == Direction::Left) {
     this->rect.move({-1.f, 0});
   }
-  if (Application::isKeyPressed(sf::Keyboard::Key::D)) {
+  if (dir == Direction::Right) {
     this->rect.move({1.f, 0});
   }
+}
+void Player::update() {
 }

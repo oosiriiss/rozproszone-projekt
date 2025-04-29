@@ -1,4 +1,5 @@
 #include "Scene.hpp"
+#include "Application.hpp"
 #include "debug.hpp"
 #include "game/Player.hpp"
 #include "logging.hpp"
@@ -143,37 +144,78 @@ ClientGameScene::ClientGameScene(std::shared_ptr<network::Client> client,
 ClientGameScene::~ClientGameScene() {}
 
 void ClientGameScene::update(float dt) {
+  if (Application::isKeyPressed(sf::Keyboard::Key::W)) {
+    m_client->send(network::PlayerMoveRequest{Direction::Up});
+  }
+  if (Application::isKeyPressed(sf::Keyboard::Key::S)) {
+    m_client->send(network::PlayerMoveRequest{Direction::Down});
+  }
+  if (Application::isKeyPressed(sf::Keyboard::Key::A)) {
+    m_client->send(network::PlayerMoveRequest{Direction::Left});
+  }
+  if (Application::isKeyPressed(sf::Keyboard::Key::D)) {
+    m_client->send(network::PlayerMoveRequest{Direction::Right});
+  }
+
   m_playerSyncTimer += dt;
 
-  while (auto msg = m_client->pollMessage()) {
-    auto packet = *msg;
-    if (auto *grr = std::get_if<network::GameReadyResponse>(&packet)) {
-      m_level = Level(grr->map);
-      m_player = Player(grr->playerID);
-      m_player.rect.setPosition(grr->playerPos);
-      m_isInitialized = true;
-      m_client->send(network::FullPlayerSyncRequest{
-          .playerID = m_player.id, .playerPos = m_player.rect.getPosition()});
-    } else if (auto *fpsr =
-                   std::get_if<network::FullPlayerSyncResponse>(&packet)) {
+  while (true) {
 
-      if (m_otherPlayers.find(fpsr->playerID) == m_otherPlayers.end()) {
-        m_otherPlayers[fpsr->playerID] = Player(fpsr->playerID);
+    LOG_DEBUG("START LOOP");
+
+    auto msg = m_client->pollMessage();
+
+    if (!msg)
+      break;
+
+    LOG_DEBUG("Polled client packet value:", msg.has_value());
+    LOG_DEBUG("MSG value index: ", msg.value().index());
+    // auto packet = *msg;
+    network::ServerPacket packet =
+        network::PlayerMoveResponse{.playerID = 1, .newPos = {0.f, 0.f}};
+    LOG_DEBUG("Polled client packet2");
+
+    if (auto *grr = std::get_if<network::GameReadyResponse>(&packet)) {
+      LOG_DEBUG("Game ready response");
+      m_level = Level(grr->map);
+      LOG_DEBUG("Level loaded");
+
+      if (grr->p1.id == grr->playerID) {
+        m_player = grr->p1;
+        m_otherPlayers[grr->p2.id] = grr->p2;
+      } else {
+        m_player = grr->p2;
+        m_otherPlayers[grr->p1.id] = grr->p1;
       }
 
-      Player &o = m_otherPlayers.at(fpsr->playerID);
-      o.rect.setPosition(fpsr->playerPos);
+      LOG_DEBUG("Players loaded");
+
+      m_isInitialized = true;
+    } else if (auto *fpsr = std::get_if<network::PlayerMoveResponse>(&packet)) {
+      LOG_DEBUG("Player Move response");
+
+      if (fpsr->playerID == m_player.id) {
+        m_player.rect.setPosition(fpsr->newPos);
+
+      } else {
+        ASSERT(m_otherPlayers.contains(fpsr->playerID));
+        m_otherPlayers[fpsr->playerID].rect.setPosition(fpsr->newPos);
+      }
     }
+
+    LOG_DEBUG("END OF LOOP");
+    LOG_DEBUG("END OF LOOP2");
   }
+  LOG_DEBUG("AFTER POLLING");
 
   m_player.update();
-  m_level.update(dt);
-
-  if (m_playerSyncTimer > FULL_SYNC_THRESHOLD) {
-    m_playerSyncTimer = 0.f;
-    m_client->send(network::FullPlayerSyncRequest{
-        .playerID = m_player.id, .playerPos = m_player.rect.getPosition()});
-  }
+  //
+  // m_level.update(dt);
+  // if (m_playerSyncTimer > FULL_SYNC_THRESHOLD) {
+  //   m_playerSyncTimer = 0.f;
+  //   m_client->send(network::FullPlayerSyncRequest{
+  //       .playerID = m_player.id, .playerPos = m_player.rect.getPosition()});
+  // }
 }
 void ClientGameScene::draw() {
   if (m_isInitialized) {
@@ -195,6 +237,11 @@ ServerGameScene::ServerGameScene(std::shared_ptr<network::Server> server,
 
   LOG_INFO("Server game scene");
   m_server->sendAll(network::StartGameResponse{});
+
+  for (const auto &client : m_server->getClients()) {
+    m_players[client.fd] = Player(client.fd);
+    m_players[client.fd].rect.setPosition(m_level.getPlayerStartPos());
+  }
 }
 ServerGameScene::~ServerGameScene() {}
 
@@ -205,27 +252,35 @@ void ServerGameScene::update(float dt) {
 
     if (auto *grr = std::get_if<network::GameReadyRequest>(&packet)) {
       LOG_INFO("Sending initalization packet");
-      Player p = Player(m_currentPlayerID++);
-      p.rect.setPosition(m_level.getPlayerStartPos());
-      m_players[p.id] = p;
-      m_server->send(
-          socket, network::GameReadyResponse{.playerID = p.id,
-                                             .playerPos = p.rect.getPosition(),
-                                             .map = m_level.getMapData()});
+      const Player &p1 = m_players[socket->fd];
+
+      ASSERT(m_players.size() == 2);
+
+      std::array<Player, 2> plrs;
+
+      int idx = 0;
+
+      Player p2;
+      for (auto &p : m_players) {
+        if (p.second.id == p1.id)
+          continue;
+        p2 = p.second;
+      }
+
+      m_server->send(socket,
+                     network::GameReadyResponse{.playerID = p1.id,
+                                                .p1 = p1,
+                                                .p2 = p2,
+                                                .map = m_level.getMapData()});
       LOG_INFO("Initialization packet sent");
-    } else if (auto *fpsr =
-                   std::get_if<network::FullPlayerSyncRequest>(&packet)) {
+    } else if (auto *pmr = std::get_if<network::PlayerMoveRequest>(&packet)) {
 
-      ASSERT(m_players.find(fpsr->playerID) != m_players.end() &&
-             "Player with id not found");
+      Player &p = m_players[socket->fd];
 
-      Player &p = m_players.at(fpsr->playerID);
+      p.move(pmr->direction);
 
-      p.rect.setPosition(fpsr->playerPos);
-
-      auto e = m_server->sendOthers(
-          socket, network::FullPlayerSyncResponse{
-                      .playerID = p.id, .playerPos = p.rect.getPosition()});
+      auto e = m_server->sendAll(network::PlayerMoveResponse{
+          .playerID = p.id, .newPos = p.rect.getPosition()});
 
     } else {
       LOG_ERROR("Unknown packet encountered");

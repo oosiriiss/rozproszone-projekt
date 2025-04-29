@@ -25,6 +25,8 @@ struct Server {
   std::optional<SocketError> send(Socket *client, network::ServerPacket packet);
   // Read all pending data from sockets
 
+  const std::vector<Socket> &getClients() { return m_clients; }
+
 private:
   std::optional<SocketError> receive();
 

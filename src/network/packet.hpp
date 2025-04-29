@@ -4,9 +4,11 @@
 #include <expected>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <variant>
 
 #include "../game/Level.hpp"
+#include "../game/Player.hpp"
 
 namespace network {
 struct JoinLobbyRequest {};
@@ -19,30 +21,46 @@ struct StartGameResponse {};
 struct GameReadyRequest {};
 
 struct GameReadyResponse {
-  uint8_t playerID;
-  sf::Vector2f playerPos;
+  int32_t playerID;
+  Player p1;
+  Player p2;
   Level::MapData map;
+
+  // TODO :: IMPLEMENT CUSTOM SERIALIZATION FOR THIS TO NOT TAKE MILION BYETS
+  // SPACES
+  // TODO :: IMPLEMENT CUSTOM SERIALIZATION FOR THIS TO NOT TAKE MILION BYETS
+  // SPACES
+  // TODO :: IMPLEMENT CUSTOM SERIALIZATION FOR THIS TO NOT TAKE MILION BYETS
+  // SPACES
+  // TODO :: IMPLEMENT CUSTOM SERIALIZATION FOR THIS TO NOT TAKE MILION BYETS
+  // SPACES
+  // TODO :: IMPLEMENT CUSTOM SERIALIZATION FOR THIS TO NOT TAKE MILION BYETS
+  // SPACES
 
   // std::string serialize() const;
   // void deserialize(std::string_view body);
 };
 
-struct FullPlayerSyncRequest {
-  uint8_t playerID;
-  sf::Vector2f playerPos;
+struct PlayerMoveRequest {
+  Direction direction;
 };
 
-struct FullPlayerSyncResponse {
-  uint8_t playerID;
-  sf::Vector2f playerPos;
+struct PlayerMoveResponse {
+  int32_t playerID;
+  sf::Vector2f newPos;
 };
+
+// struct FullPlayerSyncRequest {
+//   uint8_t playerID;
+//   sf::Vector2f playerPos;
+// };
 
 // TODO :: Change this to inheritance?
-typedef std::variant<JoinLobbyRequest, GameReadyRequest, FullPlayerSyncRequest>
+typedef std::variant<JoinLobbyRequest, GameReadyRequest, PlayerMoveRequest>
     ClientPacket;
 // TODO :: Change this to inheritance?
 typedef std::variant<JoinLobbyResponse, StartGameResponse, GameReadyResponse,
-                     FullPlayerSyncResponse>
+                     PlayerMoveResponse>
     ServerPacket;
 
 template <class PACKET> std::string encodePacket(const PACKET &packet);
