@@ -1,4 +1,6 @@
+#include <SFML/Graphics/Rect.hpp>
 #include <SFML/Graphics/RectangleShape.hpp>
+#include <SFML/System/Vector2.hpp>
 #include <array>
 #include <cstring>
 
@@ -80,7 +82,7 @@ void Level::loadLevel(const Level::MapData &data) {
 
     if (tile == TileType::EnemySpawner) {
       m_spawners.push_back(EnemySpawner(2, 3.f, [this, x, y]() {
-        //LOG_DEBUG("Spawning enemy");
+        // LOG_DEBUG("Spawning enemy");
         m_enemies.push_back(Enemy(x, y));
       }));
     }
@@ -98,6 +100,36 @@ void Level::update(float dt) {
   for (auto &e : m_enemies) {
     e.update(dt);
   }
+}
+
+bool Level::canMove(const Player &player, sf::Vector2f posDelta) const {
+
+  const sf::Vector2f newPos = player.rect.getPosition() + posDelta;
+
+  const int pc = (int)(newPos.x + player.rect.getSize().x / 2) / TILE_SIZE;
+  const int pr = (int)(newPos.y + player.rect.getSize().y / 2) / TILE_SIZE;
+
+  const int c = pr * MAP_WIDTH + pc;
+
+  for (int i = -1; i < 2; ++i) {
+    for (int j = -1; j < 2; ++j) {
+      if (i == 0 && j == 0)
+        continue;
+      sf::Vector2i tilePos = {pc + j, pr + i};
+      if (tilePos.x < 0 || tilePos.x >= MAP_WIDTH || tilePos.y < 0 ||
+          tilePos.y >= MAP_HEIGHT)
+        continue;
+
+      const Tile &tile = m_tiles[tilePos.y * MAP_WIDTH + tilePos.x];
+
+      if (tile.type== TileType::Wall && tile.rect.getGlobalBounds().findIntersection(
+              {newPos, player.rect.getSize()})) {
+        LOG_DEBUG("Collision found with: ", tilePos.x, ", ", tilePos.y);
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 constexpr std::array<TileType, Level::MAP_WIDTH * Level::MAP_HEIGHT>

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Enemy.hpp"
+#include "Player.hpp"
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <cstdint>
@@ -57,6 +58,7 @@ struct Level {
   void draw(sf::RenderWindow &window) const;
   void loadLevel(const MapData &data);
   void update(float dt);
+  bool canMove(const Player &player, sf::Vector2f posDelta) const;
 
   sf::Vector2f getPlayerStartPos() const;
   const MapData &getMapData() const;

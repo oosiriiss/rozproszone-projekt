@@ -1,4 +1,5 @@
 #pragma once
+#include <SFML/Graphics/Rect.hpp>
 #include <cstdint>
 #include <cstring>
 #include <expected>
@@ -21,21 +22,14 @@ struct StartGameResponse {};
 struct GameReadyRequest {};
 
 struct GameReadyResponse {
-  int32_t playerID;
-  Player p1;
-  Player p2;
-  Level::MapData map;
+  int32_t thisPlayerID;
+  sf::Vector2f thisPlayerPos;
+  int32_t otherID;
+  sf::Vector2f otherPlayerPos;
 
-  // TODO :: IMPLEMENT CUSTOM SERIALIZATION FOR THIS TO NOT TAKE MILION BYETS
-  // SPACES
-  // TODO :: IMPLEMENT CUSTOM SERIALIZATION FOR THIS TO NOT TAKE MILION BYETS
-  // SPACES
-  // TODO :: IMPLEMENT CUSTOM SERIALIZATION FOR THIS TO NOT TAKE MILION BYETS
-  // SPACES
-  // TODO :: IMPLEMENT CUSTOM SERIALIZATION FOR THIS TO NOT TAKE MILION BYETS
-  // SPACES
-  // TODO :: IMPLEMENT CUSTOM SERIALIZATION FOR THIS TO NOT TAKE MILION BYETS
-  // SPACES
+  // TODO ::  Change this to vector and add customserialzation for this not to
+  // take millin bytes
+  Level::MapData map;
 
   // std::string serialize() const;
   // void deserialize(std::string_view body);

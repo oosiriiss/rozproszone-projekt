@@ -159,20 +159,9 @@ void ClientGameScene::update(float dt) {
 
   m_playerSyncTimer += dt;
 
-  while (true) {
-
+  while (auto msg = m_client->pollMessage()) {
     LOG_DEBUG("START LOOP");
-
-    auto msg = m_client->pollMessage();
-
-    if (!msg)
-      break;
-
-    LOG_DEBUG("Polled client packet value:", msg.has_value());
-    LOG_DEBUG("MSG value index: ", msg.value().index());
-    // auto packet = *msg;
-    network::ServerPacket packet =
-        network::PlayerMoveResponse{.playerID = 1, .newPos = {0.f, 0.f}};
+    auto packet = *msg;
     LOG_DEBUG("Polled client packet2");
 
     if (auto *grr = std::get_if<network::GameReadyResponse>(&packet)) {
@@ -180,13 +169,11 @@ void ClientGameScene::update(float dt) {
       m_level = Level(grr->map);
       LOG_DEBUG("Level loaded");
 
-      if (grr->p1.id == grr->playerID) {
-        m_player = grr->p1;
-        m_otherPlayers[grr->p2.id] = grr->p2;
-      } else {
-        m_player = grr->p2;
-        m_otherPlayers[grr->p1.id] = grr->p1;
-      }
+      m_player = Player(grr->thisPlayerID);
+      m_player.rect.setPosition(grr->thisPlayerPos);
+
+      m_otherPlayers[grr->otherID] = Player(grr->otherID);
+      m_otherPlayers[grr->otherID].rect.setPosition(grr->otherPlayerPos);
 
       LOG_DEBUG("Players loaded");
 
@@ -206,7 +193,6 @@ void ClientGameScene::update(float dt) {
     LOG_DEBUG("END OF LOOP");
     LOG_DEBUG("END OF LOOP2");
   }
-  LOG_DEBUG("AFTER POLLING");
 
   m_player.update();
   //
@@ -214,7 +200,8 @@ void ClientGameScene::update(float dt) {
   // if (m_playerSyncTimer > FULL_SYNC_THRESHOLD) {
   //   m_playerSyncTimer = 0.f;
   //   m_client->send(network::FullPlayerSyncRequest{
-  //       .playerID = m_player.id, .playerPos = m_player.rect.getPosition()});
+  //       .playerID = m_player.id, .playerPos =
+  //       m_player.rect.getPosition()});
   // }
 }
 void ClientGameScene::draw() {
@@ -267,20 +254,23 @@ void ServerGameScene::update(float dt) {
         p2 = p.second;
       }
 
-      m_server->send(socket,
-                     network::GameReadyResponse{.playerID = p1.id,
-                                                .p1 = p1,
-                                                .p2 = p2,
-                                                .map = m_level.getMapData()});
+      m_server->send(socket, network::GameReadyResponse{
+                                 .thisPlayerID = p1.id,
+                                 .thisPlayerPos = p1.rect.getPosition(),
+                                 .otherID = p2.id,
+                                 .otherPlayerPos = p2.rect.getPosition(),
+                                 .map = m_level.getMapData(),
+                             });
       LOG_INFO("Initialization packet sent");
     } else if (auto *pmr = std::get_if<network::PlayerMoveRequest>(&packet)) {
 
       Player &p = m_players[socket->fd];
 
-      p.move(pmr->direction);
-
-      auto e = m_server->sendAll(network::PlayerMoveResponse{
-          .playerID = p.id, .newPos = p.rect.getPosition()});
+      if (m_level.canMove(p, toVec(pmr->direction))) {
+        p.rect.move(toVec(pmr->direction));
+        auto e = m_server->sendAll(network::PlayerMoveResponse{
+            .playerID = p.id, .newPos = p.rect.getPosition()});
+      }
 
     } else {
       LOG_ERROR("Unknown packet encountered");

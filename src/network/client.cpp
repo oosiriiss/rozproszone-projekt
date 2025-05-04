@@ -64,7 +64,6 @@ std::optional<SocketError> Client::receive() {
 }
 
 std::optional<network::ServerPacket> Client::pollMessage() {
-  LOG_DEBUG("Polling client");
   if (receive()) {
     LOG_ERROR("Receive failed");
   }

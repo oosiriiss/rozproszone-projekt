@@ -6,6 +6,19 @@ class GameWorld;
 
 enum class Direction { Up, Down, Left, Right };
 
+constexpr sf::Vector2f toVec(Direction dir) {
+  switch (dir) {
+  case Direction::Up:
+    return {0, -1.f};
+  case Direction::Down:
+    return {0, 1.f};
+  case Direction::Left:
+    return {-1.f, 0};
+  case Direction::Right:
+    return {1.f, 0};
+  }
+}
+
 struct Player {
 
   Player();
@@ -13,7 +26,6 @@ struct Player {
 
   void draw(sf::RenderWindow &window) const;
   void update();
-  void move(Direction dir);
 
   sf::RectangleShape rect;
   int32_t id;
