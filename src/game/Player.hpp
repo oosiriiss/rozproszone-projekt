@@ -2,6 +2,9 @@
 
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
+
+#include "../debug.hpp"
+
 class GameWorld;
 
 enum class Direction { Up, Down, Left, Right };
@@ -17,6 +20,8 @@ constexpr sf::Vector2f toVec(Direction dir) {
   case Direction::Right:
     return {1.f, 0};
   }
+
+  UNREACHABLE;
 }
 
 struct Player {

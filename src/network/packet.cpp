@@ -1,23 +1,27 @@
 #include "packet.hpp"
-#include "packet_impl.hpp"
-#include <climits>
 #include <cstdint>
-#include <cstring>
+#include <expected>
 #include <iomanip>
+#include <string>
 
 namespace network {
 
 void printBytes(const std::string &s) {
 
   std::ios_base::fmtflags f(std::cout.flags());
-
+  std::cout << std::hex << std::setfill('0') << std::setw(2);
   for (char c : s) {
-    std::cout << std::hex << std::setfill('0') << std::setw(2)
-              << ((uint32_t)c) % 256 << " ";
+    std::cout << ((uint32_t)c) % 256 << " ";
   }
   std::cout.flags(f);
   std::cout << std::endl;
 }
+
+std::string EnemyUpdateResponse::serialize() const {
+  std::string b;
+  return b;
+}
+void EnemyUpdateResponse::deserialize(std::string_view body) {}
 
 namespace internal {
 // Creates the header of the packet
@@ -38,6 +42,25 @@ std::string createPacketHeader(PacketType type,
               sizeof(contentLength));
 
   return header;
+}
+
+std::expected<HeaderParseResult, PacketError>
+parseHeader(const std::string &packet) {
+  if (packet.size() < HEADER_LENGTH_BYTES) {
+    LOG_ERROR("Packet is too short with size of: ", packet.size());
+    return std::unexpected(PacketError::InvalidLength);
+  }
+  if (!packet.starts_with(VERSION)) {
+    LOG_ERROR("Invalid version of packet (", packet.substr(sizeof(VERSION)),
+              ")");
+    return std::unexpected(PacketError::InvalidVersion);
+  }
+  PacketType type = 0;
+  std::memcpy(&type, packet.data() + sizeof(VERSION), sizeof(type));
+  PacketContentLength length = 0;
+  std::memcpy(&length, packet.data() + sizeof(VERSION) + sizeof(type),
+              sizeof(length));
+  return HeaderParseResult{.type = type, .contentLength = length};
 }
 
 void printPacket(const std::string &s) {
@@ -71,4 +94,5 @@ void printPacket(const std::string &s) {
 }
 
 } // namespace internal
+
 } // namespace network

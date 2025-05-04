@@ -39,9 +39,9 @@ sf::Color Tile::getColor(TileType type) {
     return sf::Color(180, 120, 120);
     break;
   case TileType::Count:
-    ASSERT(!"unreachable");
-    return sf::Color(0, 0, 0, 0);
+    UNREACHABLE;
   }
+  UNREACHABLE;
 }
 
 Level::Level() : m_tiles{} {
@@ -122,7 +122,8 @@ bool Level::canMove(const Player &player, sf::Vector2f posDelta) const {
 
       const Tile &tile = m_tiles[tilePos.y * MAP_WIDTH + tilePos.x];
 
-      if (tile.type== TileType::Wall && tile.rect.getGlobalBounds().findIntersection(
+      if (tile.type == TileType::Wall &&
+          tile.rect.getGlobalBounds().findIntersection(
               {newPos, player.rect.getSize()})) {
         LOG_DEBUG("Collision found with: ", tilePos.x, ", ", tilePos.y);
         return false;

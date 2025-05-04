@@ -2,10 +2,8 @@
 
 #ifdef DEBUG_BUILD
 #include <iostream>
-#include <utility>
 
-constexpr void __assertFail(const char *file, int line,
-                            const char *expression) {
+inline void __assertFail(const char *file, int line, const char *expression) {
   std::cout << "ASSERTION FAILED\n"
             << file << ":" << line << " Expression: " << expression << '\n';
   exit(-1);

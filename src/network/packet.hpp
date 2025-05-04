@@ -1,24 +1,26 @@
 #pragma once
+
 #include <SFML/Graphics/Rect.hpp>
 #include <cstdint>
-#include <cstring>
 #include <expected>
-#include <optional>
-#include <string>
-#include <unordered_map>
-#include <variant>
 
+#include "../game/Enemy.hpp"
 #include "../game/Level.hpp"
 #include "../game/Player.hpp"
 
 namespace network {
+
+class Serializable {
+  virtual std::string serialize() const = 0;
+  virtual void deserialize(std::string_view body) = 0;
+};
+
 struct JoinLobbyRequest {};
 struct JoinLobbyResponse {
   uint8_t connectedPlayersCount;
 };
 
 struct StartGameResponse {};
-
 struct GameReadyRequest {};
 
 struct GameReadyResponse {
@@ -44,10 +46,14 @@ struct PlayerMoveResponse {
   sf::Vector2f newPos;
 };
 
-// struct FullPlayerSyncRequest {
-//   uint8_t playerID;
-//   sf::Vector2f playerPos;
-// };
+struct EnemyUpdateResponse : Serializable {
+  std::vector<sf::Vector2f> enemyPos;
+
+  std::string serialize() const override;
+  void deserialize(std::string_view body) override;
+};
+
+void printBytes(const std::string &s);
 
 // TODO :: Change this to inheritance?
 typedef std::variant<JoinLobbyRequest, GameReadyRequest, PlayerMoveRequest>

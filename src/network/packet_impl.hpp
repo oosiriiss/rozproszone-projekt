@@ -2,18 +2,22 @@
 #include <cstdint>
 #include <cstring>
 #include <expected>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <variant>
 
 #include "../debug.hpp"
 #include "../logging.hpp"
 
+#include "packet.hpp"
+
 namespace network {
 
-void printBytes(const std::string &s);
-
 namespace internal {
+
+void printPacket(const std::string &s);
 
 // Byte sequence used to separate messages in TCP stream
 constexpr char VERSION[4] = {0, 0, 0, 1};
@@ -34,16 +38,12 @@ constexpr int32_t HEADER_LENGTH_BYTES =
 std::string createPacketHeader(PacketType type,
                                PacketContentLength contentLength);
 
-void printPacket(const std::string &s);
+std::expected<HeaderParseResult, PacketError>
+parseHeader(const std::string &packet);
 
 template <typename T>
-concept HasCustomSerialization = requires(T t) {
-  { t.serialize() } -> std::same_as<std::string>;
-};
-template <typename T>
-concept HasCustomDeserialization = requires(T t) {
-  { t.deserialize(std::declval<std::string>()) } -> std::same_as<void>;
-};
+concept HasCustomSerialization =
+    requires(T t) { std::is_base_of_v<Serializable, T>(); };
 
 template <typename VARIANT>
 constexpr std::string serializePacket(const VARIANT &packet) {
@@ -53,9 +53,6 @@ constexpr std::string serializePacket(const VARIANT &packet) {
       [&packetBody](auto &&p) {
         using T = std::decay_t<decltype(p)>;
         if constexpr (HasCustomSerialization<T>) {
-          static_assert(
-              HasCustomDeserialization<T>,
-              "Has custom serialization but doesn't have deserialization");
 
           packetBody.append(p.serialize());
         } else {
@@ -78,12 +75,8 @@ VARIANT deserializePacket(PacketType index, const std::string &data) {
       LOG_DEBUG("altSize: ", sizeof(alt));
       alt obj;
 
-      if constexpr (HasCustomDeserialization<alt>) {
-        static_assert(
-            HasCustomSerialization<alt>,
-            "Has custom Deserialization but doesn't have Serialization");
-
-        obj.serialize(data);
+      if constexpr (HasCustomSerialization<alt>) {
+        obj.deserialize(data);
       } else {
         ASSERT(data.size() == sizeof(alt));
         std::memcpy(&obj, data.data(), sizeof(alt));
@@ -96,36 +89,6 @@ VARIANT deserializePacket(PacketType index, const std::string &data) {
   } else {
     throw std::out_of_range("Invalid variant index");
   }
-}
-
-template <typename VARIANT>
-std::expected<HeaderParseResult, PacketError>
-parseHeader(const std::string &packet) {
-
-  if (packet.size() < HEADER_LENGTH_BYTES) {
-    LOG_ERROR("Packet is too short with size of: ", packet.size());
-    return std::unexpected(PacketError::InvalidLength);
-  }
-
-  if (!packet.starts_with(VERSION)) {
-    LOG_ERROR("Invalid version of packet (", packet.substr(sizeof(VERSION)),
-              ")");
-    return std::unexpected(PacketError::InvalidVersion);
-  }
-
-  PacketType type = 0;
-  std::memcpy(&type, packet.data() + sizeof(VERSION), sizeof(type));
-
-  if (type >= std::variant_size_v<VARIANT> || type < 0) {
-    LOG_ERROR("Invalid packet type: ", type);
-    return std::unexpected(PacketError::InvalidType);
-  }
-  PacketContentLength length = 0;
-
-  std::memcpy(&length, packet.data() + sizeof(VERSION) + sizeof(type),
-              sizeof(length));
-
-  return HeaderParseResult{.type = type, .contentLength = length};
 }
 } // namespace internal
 
@@ -154,10 +117,17 @@ std::optional<VARIANT> decodePacket(const std::string &packet) {
 
   DEBUG_ONLY(internal::printPacket(packet));
 
-  auto headerResult = internal::parseHeader<VARIANT>(packet);
+  auto headerResult = internal::parseHeader(packet);
 
   if (!headerResult) {
     LOG_ERROR("Packet header Couldn't be parsed");
+    return std::nullopt;
+  }
+
+  if (headerResult->type >= std::variant_size_v<VARIANT> ||
+      headerResult->type < 0) {
+    LOG_ERROR("Invalid packet type: ", headerResult->type);
+    // return std::unexpected(PacketError::InvalidType);
     return std::nullopt;
   }
 
