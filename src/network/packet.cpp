@@ -7,7 +7,7 @@
 
 namespace network {
 
-void printBytes(const std::string &s) {
+void printBytes(std::string_view s) {
 
   std::ios_base::fmtflags f(std::cout.flags());
   std::cout << std::hex << std::setfill('0') << std::setw(2);
@@ -18,12 +18,23 @@ void printBytes(const std::string &s) {
   std::cout << std::endl;
 }
 
+EnemyUpdateResponse::EnemyUpdateResponse(std::vector<sf::Vector2f> positions)
+    : enemyPos(positions) {}
 std::string EnemyUpdateResponse::serialize() const {
-  internal::serialize(this->enemyPos);
+  std::string s = internal::serialize(this->enemyPos);
+
+  LOG_INFO("Serialized bytes: ");
+  printBytes(s);
+
+  return s;
 }
 
 void EnemyUpdateResponse::deserialize(const std::string_view body) {
+  LOG_INFO("Deserializing EnemyUpdateResponse");
+  LOG_INFO("Received packet: ");
+  printBytes(body);
   this->enemyPos = internal::deserialize<sf::Vector2f>(body);
+  LOG_INFO("Received enemies: ", enemyPos.size());
 }
 
 namespace internal {

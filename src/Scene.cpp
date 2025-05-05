@@ -160,7 +160,7 @@ void ClientGameScene::update(float dt) {
   m_playerSyncTimer += dt;
 
   while (auto msg = m_client->pollMessage()) {
-    LOG_DEBUG("START LOOP");
+    LOG_DEBUG("Received message from server");
     auto packet = *msg;
     LOG_DEBUG("Polled client packet2");
 
@@ -188,21 +188,16 @@ void ClientGameScene::update(float dt) {
         ASSERT(m_otherPlayers.contains(fpsr->playerID));
         m_otherPlayers[fpsr->playerID].rect.setPosition(fpsr->newPos);
       }
+    } else if (auto *eur = std::get_if<network::EnemyUpdateResponse>(&packet)) {
+      LOG_DEBUG("Upadting enemies");
+      m_level.enemies.clear();
+      for (auto &pos : eur->enemyPos) {
+        m_level.enemies.push_back(Enemy(pos.x, pos.y));
+      }
     }
-
-    LOG_DEBUG("END OF LOOP");
-    LOG_DEBUG("END OF LOOP2");
   }
 
   m_player.update();
-  //
-  // m_level.update(dt);
-  // if (m_playerSyncTimer > FULL_SYNC_THRESHOLD) {
-  //   m_playerSyncTimer = 0.f;
-  //   m_client->send(network::FullPlayerSyncRequest{
-  //       .playerID = m_player.id, .playerPos =
-  //       m_player.rect.getPosition()});
-  // }
 }
 void ClientGameScene::draw() {
   if (m_isInitialized) {
@@ -230,6 +225,7 @@ ServerGameScene::ServerGameScene(std::shared_ptr<network::Server> server,
     m_players[client.fd].rect.setPosition(m_level.getPlayerStartPos());
   }
 }
+
 ServerGameScene::~ServerGameScene() {}
 
 void ServerGameScene::update(float dt) {
@@ -278,6 +274,21 @@ void ServerGameScene::update(float dt) {
   }
 
   m_level.update(dt);
+
+  // Sending updated enemies to the clients
+
+  m_fullSyncTimer += dt;
+  if (m_fullSyncTimer > 1.f) {
+    m_fullSyncTimer = 0;
+    std::vector<sf::Vector2f> positions;
+    positions.reserve(m_level.enemies.size());
+
+    for (const auto &enemy : m_level.enemies) {
+      positions.push_back(enemy.rect.getPosition());
+    }
+
+    m_server->sendAll(network::EnemyUpdateResponse(positions));
+  }
 }
 void ServerGameScene::draw() {
   m_level.draw(m_window);

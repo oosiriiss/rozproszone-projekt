@@ -6,8 +6,6 @@
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <cstdint>
 
-class GameWorld;
-
 enum class TileType : int {
   //
   Ground = 0,
@@ -60,6 +58,11 @@ struct Level {
   void update(float dt);
   bool canMove(const Player &player, sf::Vector2f posDelta) const;
 
+  // Returns the coordinates of the next tile to move to
+  sf::Vector2u findPathTo(sf::Vector2u startTile, sf::Vector2u endTile) const;
+  constexpr sf::Vector2u
+  calculateTileFromPosition(const sf::Vector2f pos) const;
+
   sf::Vector2f getPlayerStartPos() const;
   const MapData &getMapData() const;
 
@@ -67,9 +70,7 @@ struct Level {
 
   const static MapData Map1Data;
 
-private:
-  std::array<Tile, MAP_WIDTH * MAP_HEIGHT> m_tiles;
-
-  std::vector<EnemySpawner> m_spawners;
-  std::vector<Enemy> m_enemies;
+  std::array<Tile, MAP_WIDTH * MAP_HEIGHT> tiles;
+  std::vector<EnemySpawner> spawners;
+  std::vector<Enemy> enemies;
 };

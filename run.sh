@@ -3,6 +3,7 @@ ninja -C build
 
 if [[ $? -eq 0 ]]; then
 
+   tmux kill-session -t sess
    echo "Running debug configuration"
 
    tmux new-session -d -s sess 

@@ -10,22 +10,8 @@ Enemy::Enemy(float x, float y) : rect() {
 Enemy::~Enemy() {}
 
 void Enemy::draw(sf::RenderWindow &window) const { window.draw(this->rect); }
-void Enemy::update(float dt, const Level::MapData &level) {
-  auto r1 = rand();
-  auto r2 = rand();
-  auto r3 = rand();
-
-  float distance = 1 * ((double)r1) / RAND_MAX;
-
-  sf::Vector2f direction = {1, 1};
-
-  if (r2 > RAND_MAX / 2)
-    direction.x = -1;
-
-  if (r3 > RAND_MAX / 2)
-    direction.y = -1;
-
-  this->rect.move(direction * distance);
+void Enemy::update(float dt, sf::Vector2f direction) {
+  this->rect.move(direction * dt * 5.f);
 }
 
 EnemySpawner::EnemySpawner(uint32_t enemiesToSpawn, float spawnDelaySeconds,

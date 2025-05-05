@@ -47,19 +47,21 @@ struct PlayerMoveResponse {
 };
 
 struct EnemyUpdateResponse : Serializable {
+  EnemyUpdateResponse() = default;
+  EnemyUpdateResponse(std::vector<sf::Vector2f> positions);
   std::vector<sf::Vector2f> enemyPos;
   std::string serialize() const override;
   void deserialize(std::string_view body) override;
 };
 
-void printBytes(const std::string &s);
+void printBytes(std::string_view s);
 
 // TODO :: Change this to inheritance?
 typedef std::variant<JoinLobbyRequest, GameReadyRequest, PlayerMoveRequest>
     ClientPacket;
 // TODO :: Change this to inheritance?
 typedef std::variant<JoinLobbyResponse, StartGameResponse, GameReadyResponse,
-                     PlayerMoveResponse>
+                     PlayerMoveResponse, EnemyUpdateResponse>
     ServerPacket;
 
 template <class PACKET> std::string encodePacket(const PACKET &packet);

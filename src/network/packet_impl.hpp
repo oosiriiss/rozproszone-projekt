@@ -25,7 +25,7 @@ constexpr inline void appendBytes(std::string &dest, const T &obj) {
 template <typename T>
 constexpr inline size_t readBytes(std::string_view src, T &obj, size_t offset) {
   ASSERT(src.size() > offset && "Offset is smaller than string");
-  ASSERT(sizeof(T) > (src.size() - offset) && "Enough bytes to read");
+  ASSERT(sizeof(T) <= (src.size() - offset) && "Enough bytes to read");
 
   std::memcpy(&obj, src.data() + offset, sizeof(T));
 
@@ -37,6 +37,8 @@ constexpr inline std::string serialize(const std::vector<T> &a) {
 
   std::string b;
   appendBytes(b, a.size());
+  LOG_DEBUG("b: ");
+  DEBUG_ONLY(printBytes(b));
   for (const auto &x : a) {
     appendBytes(b, x);
   }
@@ -54,6 +56,7 @@ constexpr inline std::vector<T> deserialize(std::string_view s) {
 
   std::vector<T> ts = std::vector<T>(count);
 
+  LOG_DEBUG("body bytes: ", s.size() - offset, " Needed bytes: ", count);
   ASSERT(s.size() - offset >= count * sizeof(T) && "Enough elements to read");
 
   for (int i = 0; i < count; ++i) {
@@ -65,8 +68,7 @@ constexpr inline std::vector<T> deserialize(std::string_view s) {
 }
 
 template <typename T>
-concept HasCustomSerialization =
-    requires(T t) { std::is_base_of_v<Serializable, T>(); };
+concept HasCustomSerialization = std::is_base_of_v<Serializable, T>;
 
 template <typename VARIANT>
 constexpr std::string serializePacket(const VARIANT &packet) {
@@ -76,7 +78,7 @@ constexpr std::string serializePacket(const VARIANT &packet) {
       [&packetBody](auto &&p) {
         using T = std::decay_t<decltype(p)>;
         if constexpr (HasCustomSerialization<T>) {
-
+          LOG_DEBUG("Custom serialization");
           packetBody.append(p.serialize());
         } else {
           char buf[sizeof(T)] = {0};
@@ -99,6 +101,7 @@ VARIANT deserializePacket(PacketType index, const std::string &data) {
       alt obj;
 
       if constexpr (HasCustomSerialization<alt>) {
+        LOG_DEBUG("Custom serialization");
         obj.deserialize(data);
       } else {
         ASSERT(data.size() == sizeof(alt));

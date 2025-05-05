@@ -6,7 +6,6 @@
 
 #include "../debug.hpp"
 #include "../logging.hpp"
-
 #include "Level.hpp"
 
 Tile::Tile() : rect(), type(TileType::Count) {}
@@ -44,31 +43,31 @@ sf::Color Tile::getColor(TileType type) {
   UNREACHABLE;
 }
 
-Level::Level() : m_tiles{} {
+Level::Level() : tiles{} {
 
   LOG_INFO("Loading default level data");
   loadLevel(this->Map1Data);
 }
-Level::Level(const MapData &tilemap) : m_tiles({}) { loadLevel(tilemap); }
+Level::Level(const MapData &tilemap) : tiles({}) { loadLevel(tilemap); }
 Level::~Level() { LOG_INFO("Destroying level"); }
 
 void Level::draw(sf::RenderWindow &window) const {
-  for (const auto &tile : this->m_tiles) {
+  for (const auto &tile : this->tiles) {
     window.draw(tile.rect);
   }
-  for (const auto &e : m_enemies) {
+  for (const auto &e : enemies) {
     e.draw(window);
   }
 }
 
 void Level::loadLevel(const Level::MapData &data) {
-  ASSERT(this->m_tiles.max_size() == data.tiles.max_size());
+  ASSERT(this->tiles.max_size() == data.tiles.max_size());
 
   this->m_currentMapID = data.id;
 
   LOG_DEBUG("Loading level: ", (int)data.id);
 
-  for (int i = 0; i < m_tiles.max_size(); ++i) {
+  for (int i = 0; i < tiles.max_size(); ++i) {
 
     const int col = i % MAP_WIDTH;
     const int row = i / MAP_WIDTH;
@@ -78,12 +77,12 @@ void Level::loadLevel(const Level::MapData &data) {
 
     TileType tile = data.tiles[i];
 
-    this->m_tiles[i] = Tile(x, y, Level::TILE_SIZE, tile);
+    this->tiles[i] = Tile(x, y, Level::TILE_SIZE, tile);
 
     if (tile == TileType::EnemySpawner) {
-      m_spawners.push_back(EnemySpawner(2, 3.f, [this, x, y]() {
-        // LOG_DEBUG("Spawning enemy");
-        m_enemies.push_back(Enemy(x, y));
+      spawners.push_back(EnemySpawner(2, 3.f, [this, x, y]() {
+        LOG_DEBUG("Spawning enemy at x: ", x, " y: ", y);
+        enemies.push_back(Enemy(x, y));
       }));
     }
   }
@@ -93,34 +92,63 @@ void Level::loadLevel(const Level::MapData &data) {
 
 void Level::update(float dt) {
 
-  for (auto &s : m_spawners) {
+  for (auto &s : spawners) {
     s.update(dt);
   }
 
-  for (auto &e : m_enemies) {
-    e.update(dt);
+  sf::Vector2u destination = {2, 20};
+  for (auto &e : enemies) {
+
+    sf::Vector2u currentTile = calculateTileFromPosition(e.rect.getPosition());
+    sf::Vector2u nextTile = findPathTo(currentTile, destination);
+
+    if (nextTile == destination) {
+      LOG_DEBUG("Destiantion reached");
+    } else {
+      sf::Vector2f direction = sf::Vector2f{
+          static_cast<float>(nextTile.x) - static_cast<float>(currentTile.x),
+          static_cast<float>(nextTile.y) - static_cast<float>(currentTile.y)};
+
+      if (direction.lengthSquared() != 0)
+        direction = direction.normalized();
+
+      e.update(dt, direction);
+    }
   }
+}
+
+sf::Vector2u Level::findPathTo(sf::Vector2u startTile,
+                               sf::Vector2u endTile) const {
+  return {0, 0};
+}
+
+constexpr sf::Vector2u
+Level::calculateTileFromPosition(const sf::Vector2f pos) const {
+  const int tx = pos.x / Level::TILE_SIZE;
+  const int ty = pos.y / Level::TILE_SIZE;
+
+  ASSERT(tx >= 0 && tx < Level::MAP_WIDTH && "X Tile position within map");
+  ASSERT(ty >= 0 && ty < Level::MAP_HEIGHT && "Y Tile position within map");
+
+  return {static_cast<unsigned int>(pos.x / Level::TILE_SIZE),
+          static_cast<unsigned int>(pos.y / Level::TILE_SIZE)};
 }
 
 bool Level::canMove(const Player &player, sf::Vector2f posDelta) const {
 
   const sf::Vector2f newPos = player.rect.getPosition() + posDelta;
-
-  const int pc = (int)(newPos.x + player.rect.getSize().x / 2) / TILE_SIZE;
-  const int pr = (int)(newPos.y + player.rect.getSize().y / 2) / TILE_SIZE;
-
-  const int c = pr * MAP_WIDTH + pc;
+  const sf::Vector2u newTilePos = calculateTileFromPosition(newPos);
 
   for (int i = -1; i < 2; ++i) {
     for (int j = -1; j < 2; ++j) {
       if (i == 0 && j == 0)
         continue;
-      sf::Vector2i tilePos = {pc + j, pr + i};
+      sf::Vector2u tilePos = {newTilePos.x + j, newTilePos.y + i};
       if (tilePos.x < 0 || tilePos.x >= MAP_WIDTH || tilePos.y < 0 ||
           tilePos.y >= MAP_HEIGHT)
         continue;
 
-      const Tile &tile = m_tiles[tilePos.y * MAP_WIDTH + tilePos.x];
+      const Tile &tile = tiles[tilePos.y * MAP_WIDTH + tilePos.x];
 
       if (tile.type == TileType::Wall &&
           tile.rect.getGlobalBounds().findIntersection(
@@ -149,7 +177,7 @@ sf::Vector2f Level::getPlayerStartPos() const {
 
   int i = 0;
 
-  for (const Tile &t : this->m_tiles) {
+  for (const Tile &t : this->tiles) {
 
     if (t.type == TileType::PlayerStart)
       return sf::Vector2f{static_cast<float>((i % MAP_WIDTH) * TILE_SIZE),
