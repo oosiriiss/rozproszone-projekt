@@ -1,4 +1,5 @@
 #include "packet.hpp"
+#include <SFML/System/Vector2.hpp>
 #include <cstdint>
 #include <expected>
 #include <iomanip>
@@ -18,23 +19,22 @@ void printBytes(const std::string &s) {
 }
 
 std::string EnemyUpdateResponse::serialize() const {
-  std::string b;
-  return b;
+  internal::serialize(this->enemyPos);
 }
-void EnemyUpdateResponse::deserialize(std::string_view body) {}
+
+void EnemyUpdateResponse::deserialize(const std::string_view body) {
+  this->enemyPos = internal::deserialize<sf::Vector2f>(body);
+}
 
 namespace internal {
+
 // Creates the header of the packet
-// like assings packet type etc.
 std::string createPacketHeader(PacketType type,
                                PacketContentLength contentLength) {
 
   static_assert(sizeof((VERSION)) == 4, "Version length == 4");
 
-  std::string header = std::string(HEADER_LENGTH_BYTES, 'x');
-  LOG_ERROR("HEADER: ", header);
-  LOG_ERROR("HEADER LEN ", header.size());
-
+  std::string header = std::string(HEADER_LENGTH_BYTES, '-');
   LOG_DEBUG("Encoded header length", header.size());
   std::memcpy(header.data(), VERSION, sizeof(VERSION));
   std::memcpy(header.data() + sizeof(VERSION), &type, sizeof(type));

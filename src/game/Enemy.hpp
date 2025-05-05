@@ -4,14 +4,14 @@
 #include <SFML/Window.hpp>
 #include <functional>
 
-class GameWorld;
+struct Level;
 
 struct EnemySpawner {
   EnemySpawner(uint32_t enemiesToSpawn, float spawnDelaySeconds,
                std::function<void(void)> spawnCallback);
   ~EnemySpawner();
 
-  void update(float dt);
+  void update(float dt, const Level::MapData &level);
 
 private:
   uint32_t m_leftToSpawn = 0;

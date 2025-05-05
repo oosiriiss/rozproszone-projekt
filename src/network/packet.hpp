@@ -48,7 +48,6 @@ struct PlayerMoveResponse {
 
 struct EnemyUpdateResponse : Serializable {
   std::vector<sf::Vector2f> enemyPos;
-
   std::string serialize() const override;
   void deserialize(std::string_view body) override;
 };
@@ -67,6 +66,47 @@ template <class PACKET> std::string encodePacket(const PACKET &packet);
 
 template <class VARIANT>
 std::optional<VARIANT> decodePacket(const std::string &packet);
+
+namespace internal {
+
+// Byte sequence used to separate messages in TCP stream
+constexpr char VERSION[4] = {0, 0, 0, 1};
+constexpr char SEPARATOR[4] = {0x0F, 0x00, 0x01, 0x0A};
+typedef uint16_t PacketType;
+typedef uint16_t PacketContentLength;
+
+struct HeaderParseResult {
+  PacketType type;
+  PacketContentLength contentLength;
+};
+
+enum class PacketError { InvalidVersion, InvalidType, InvalidLength };
+
+constexpr int32_t HEADER_LENGTH_BYTES =
+    sizeof(VERSION) + sizeof(PacketType) + sizeof(PacketContentLength);
+
+template <typename T>
+constexpr inline void appendBytes(std::string &dest, const T &obj);
+// returns the number of bytes read
+template <typename T>
+constexpr inline size_t readBytes(std::string_view src, T &outObj,
+                                  size_t offset = 0);
+
+template <typename T>
+constexpr inline std::string serialize(const std::vector<T> &a);
+
+template <typename T>
+constexpr inline std::vector<T> deserialize(std::string_view s);
+
+void printPacket(const std::string &s);
+
+std::string createPacketHeader(PacketType type,
+                               PacketContentLength contentLength);
+
+std::expected<HeaderParseResult, PacketError>
+parseHeader(const std::string &packet);
+
+} // namespace internal
 
 } // namespace network
 

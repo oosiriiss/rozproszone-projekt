@@ -17,29 +17,52 @@ namespace network {
 
 namespace internal {
 
-void printPacket(const std::string &s);
+template <typename T>
+constexpr inline void appendBytes(std::string &dest, const T &obj) {
+  dest.append((char *)&obj, sizeof(obj));
+}
 
-// Byte sequence used to separate messages in TCP stream
-constexpr char VERSION[4] = {0, 0, 0, 1};
-constexpr char SEPARATOR[4] = {0x0F, 0x00, 0x01, 0x0A};
-typedef uint16_t PacketType;
-typedef uint16_t PacketContentLength;
+template <typename T>
+constexpr inline size_t readBytes(std::string_view src, T &obj, size_t offset) {
+  ASSERT(src.size() > offset && "Offset is smaller than string");
+  ASSERT(sizeof(T) > (src.size() - offset) && "Enough bytes to read");
 
-struct HeaderParseResult {
-  PacketType type;
-  PacketContentLength contentLength;
-};
+  std::memcpy(&obj, src.data() + offset, sizeof(T));
 
-enum class PacketError { InvalidVersion, InvalidType, InvalidLength };
+  return sizeof(T);
+}
 
-constexpr int32_t HEADER_LENGTH_BYTES =
-    sizeof(VERSION) + sizeof(PacketType) + sizeof(PacketContentLength);
+template <typename T>
+constexpr inline std::string serialize(const std::vector<T> &a) {
 
-std::string createPacketHeader(PacketType type,
-                               PacketContentLength contentLength);
+  std::string b;
+  appendBytes(b, a.size());
+  for (const auto &x : a) {
+    appendBytes(b, x);
+  }
 
-std::expected<HeaderParseResult, PacketError>
-parseHeader(const std::string &packet);
+  return b;
+}
+
+template <typename T>
+constexpr inline std::vector<T> deserialize(std::string_view s) {
+
+  size_t offset = 0;
+
+  size_t count = 0;
+  offset += readBytes(s, count);
+
+  std::vector<T> ts = std::vector<T>(count);
+
+  ASSERT(s.size() - offset >= count * sizeof(T) && "Enough elements to read");
+
+  for (int i = 0; i < count; ++i) {
+    T x;
+    offset += readBytes(s, x, offset);
+    ts.push_back(x);
+  }
+  return ts;
+}
 
 template <typename T>
 concept HasCustomSerialization =

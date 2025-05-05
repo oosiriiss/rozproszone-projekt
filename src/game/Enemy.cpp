@@ -1,4 +1,5 @@
 #include "Enemy.hpp"
+#include "Level.hpp"
 #include <cstdlib>
 
 Enemy::Enemy(float x, float y) : rect() {
@@ -9,7 +10,7 @@ Enemy::Enemy(float x, float y) : rect() {
 Enemy::~Enemy() {}
 
 void Enemy::draw(sf::RenderWindow &window) const { window.draw(this->rect); }
-void Enemy::update(float dt) {
+void Enemy::update(float dt, const Level::MapData &level) {
   auto r1 = rand();
   auto r2 = rand();
   auto r3 = rand();
