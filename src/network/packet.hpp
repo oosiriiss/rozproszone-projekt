@@ -54,14 +54,36 @@ struct EnemyUpdateResponse : Serializable {
   void deserialize(std::string_view body) override;
 };
 
+struct FireballShotRequest {
+  int32_t playerID;
+  sf::Vector2f pos;
+  sf::Vector2f direction;
+};
+
+struct UpdateFireballsResponse : public Serializable {
+
+  UpdateFireballsResponse() = default;
+  UpdateFireballsResponse(std::vector<sf::Vector2f> positions,
+                          std::vector<sf::Vector2f> directions);
+
+  // Todo :: introduce some kind of dto
+  std::vector<sf::Vector2f> positions;
+  std::vector<sf::Vector2f> directions;
+
+  std::string serialize() const override;
+  void deserialize(std::string_view body) override;
+};
+
 void printBytes(std::string_view s);
 
 // TODO :: Change this to inheritance?
-typedef std::variant<JoinLobbyRequest, GameReadyRequest, PlayerMoveRequest>
+typedef std::variant<JoinLobbyRequest, GameReadyRequest, PlayerMoveRequest,
+                     FireballShotRequest>
     ClientPacket;
 // TODO :: Change this to inheritance?
 typedef std::variant<JoinLobbyResponse, StartGameResponse, GameReadyResponse,
-                     PlayerMoveResponse, EnemyUpdateResponse>
+                     PlayerMoveResponse, EnemyUpdateResponse,
+                     UpdateFireballsResponse>
     ServerPacket;
 
 template <class PACKET> std::string encodePacket(const PACKET &packet);
@@ -98,7 +120,7 @@ template <typename T>
 constexpr inline std::string serialize(const std::vector<T> &a);
 
 template <typename T>
-constexpr inline std::vector<T> deserialize(std::string_view s);
+constexpr inline size_t deserialize(std::string_view s, std::vector<T> &out);
 
 void printPacket(const std::string &s);
 

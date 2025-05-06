@@ -22,19 +22,36 @@ EnemyUpdateResponse::EnemyUpdateResponse(std::vector<sf::Vector2f> positions)
     : enemyPos(positions) {}
 std::string EnemyUpdateResponse::serialize() const {
   std::string s = internal::serialize(this->enemyPos);
-
-  LOG_INFO("Serialized bytes: ");
-  printBytes(s);
-
   return s;
 }
 
 void EnemyUpdateResponse::deserialize(const std::string_view body) {
-  LOG_INFO("Deserializing EnemyUpdateResponse");
-  LOG_INFO("Received packet: ");
+  LOG_DEBUG("Deserializing EnemyUpdateResponse");
+  LOG_DEBUG("Received packet: ");
   printBytes(body);
-  this->enemyPos = internal::deserialize<sf::Vector2f>(body);
-  LOG_INFO("Received enemies: ", enemyPos.size());
+  size_t offset = internal::deserialize<sf::Vector2f>(body, this->enemyPos);
+  LOG_DEBUG("Received enemies: ", enemyPos.size());
+}
+
+UpdateFireballsResponse::UpdateFireballsResponse(
+    std::vector<sf::Vector2f> positions, std::vector<sf::Vector2f> directions)
+    : positions(positions), directions(directions) {}
+
+std::string UpdateFireballsResponse::serialize() const {
+  std::string s = internal::serialize(this->positions);
+  s.append(internal::serialize(this->directions));
+  return s;
+}
+
+void UpdateFireballsResponse::deserialize(std::string_view body) {
+  LOG_DEBUG("Deserializing UpdateFireballsResponse");
+  LOG_DEBUG("Body size: ", body.size());
+  size_t offset = internal::deserialize<sf::Vector2f>(body, this->positions);
+  LOG_DEBUG("Ofset after first deserialization: ", offset);
+  offset += internal::deserialize<sf::Vector2f>(
+      body.substr(offset, body.size() - offset), this->directions);
+
+  LOG_DEBUG("Deserialized");
 }
 
 namespace internal {

@@ -25,6 +25,7 @@ set(SOURCES
    src/game/Player.cpp
    src/game/Enemy.cpp
    src/game/Level.cpp
+   src/game/Fireball.cpp
    src/network/socket.cpp
    src/network/server.cpp
    src/network/client.cpp

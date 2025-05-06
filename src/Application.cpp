@@ -14,6 +14,11 @@
 #include "Application.hpp"
 #include "ui/ui.hpp"
 
+sf::Vector2i Application::s_mousePos = {-1, -1};
+
+std::vector<sf::Mouse::Button> Application::s_mouseButtons =
+    std::vector<sf::Mouse::Button>();
+
 std::vector<sf::Keyboard::Key> Application::s_pressedKeys =
     std::vector<sf::Keyboard::Key>();
 
@@ -35,7 +40,7 @@ Application::Application(int argc, char *argv[]) : m_assetManager("./assets") {
 
   constexpr int WINDOW_WIDTH = 640;
   constexpr int WINDOW_HEIGHT = 640;
-  constexpr int WINDOW_STYLE = sf::Style::Titlebar;
+  constexpr int WINDOW_STYLE = sf::Style::Titlebar; 
 
   m_window = sf::RenderWindow(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}),
                               title, WINDOW_STYLE);
@@ -92,13 +97,16 @@ void Application::run(bool isServer) {
 }
 
 void Application::handleEvents() {
-
   s_pressedKeys.clear();
+  s_mouseButtons.clear();
 
   while (const std::optional event = m_window.pollEvent()) {
     if (event->is<sf::Event::Closed>())
       m_window.close();
     if (auto *mouse = event->getIf<sf::Event::MouseButtonPressed>()) {
+      s_mouseButtons.push_back(mouse->button);
+      s_mousePos = mouse->position;
+
       ui::g_UIContext.mousePos = {mouse->position.x, mouse->position.y};
       ui::g_UIContext.didClickMouse = mouse->button == sf::Mouse::Button::Left;
     } else if (auto *keyboard = event->getIf<sf::Event::KeyPressed>()) {
@@ -107,7 +115,16 @@ void Application::handleEvents() {
   }
 }
 
+sf::Vector2f Application::getMousePosition() {
+  return {static_cast<float>(s_mousePos.x), static_cast<float>(s_mousePos.y)};
+}
+
 bool Application::isKeyPressed(sf::Keyboard::Key k) {
   return std::find(s_pressedKeys.begin(), s_pressedKeys.end(), k) !=
          s_pressedKeys.end();
+}
+
+bool Application::isMousePressed(sf::Mouse::Button b) {
+  return std::find(s_mouseButtons.begin(), s_mouseButtons.end(), b) !=
+         s_mouseButtons.end();
 }

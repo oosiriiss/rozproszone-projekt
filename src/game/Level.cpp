@@ -52,11 +52,17 @@ Level::Level(const MapData &tilemap) : tiles({}) { loadLevel(tilemap); }
 Level::~Level() { LOG_INFO("Destroying level"); }
 
 void Level::draw(sf::RenderWindow &window) const {
+
   for (const auto &tile : this->tiles) {
     window.draw(tile.rect);
   }
+
   for (const auto &e : enemies) {
     e.draw(window);
+  }
+
+  for (const auto &f : fireballs) {
+    f.draw(window);
   }
 }
 
@@ -115,6 +121,19 @@ void Level::update(float dt) {
       e.update(dt, direction);
     }
   }
+
+  for (auto &f : fireballs) {
+    f.update(dt);
+  }
+
+  // Removing fireball that are out of the map
+  fireballs.resize(std::distance(
+      fireballs.begin(),
+      std::remove_if(fireballs.begin(), fireballs.end(), [](Fireball &f) {
+        sf::Vector2f pos = f.rect.getPosition();
+        return (pos.x < 0 || pos.x > MAP_WIDTH * TILE_SIZE || pos.y < 0 ||
+                pos.y > MAP_WIDTH * TILE_SIZE);
+      })));
 }
 
 sf::Vector2u Level::findPathTo(sf::Vector2u startTile,

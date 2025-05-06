@@ -157,6 +157,18 @@ void ClientGameScene::update(float dt) {
     m_client->send(network::PlayerMoveRequest{Direction::Right});
   }
 
+  if (Application::isMousePressed(sf::Mouse::Button::Left)) {
+
+    sf::Vector2f dir =
+        (Application::getMousePosition() - m_player.rect.getPosition())
+            .normalized();
+    m_client->send(network::FireballShotRequest{
+        .playerID = m_player.id,
+        .pos = m_player.rect.getPosition() + (m_player.rect.getSize() / 2.f),
+        .direction = dir,
+    });
+  }
+
   m_playerSyncTimer += dt;
 
   while (auto msg = m_client->pollMessage()) {
@@ -194,6 +206,19 @@ void ClientGameScene::update(float dt) {
       for (auto &pos : eur->enemyPos) {
         m_level.enemies.push_back(Enemy(pos.x, pos.y));
       }
+    } else if (auto *ufr =
+                   std::get_if<network::UpdateFireballsResponse>(&packet)) {
+
+      ASSERT(ufr->directions.size() == ufr->positions.size() &&
+             "Vectors must be the same size");
+      m_level.fireballs.clear();
+      for (int i = 0; i < ufr->directions.size(); ++i) {
+        m_level.fireballs.push_back(
+            Fireball(ufr->positions[i], ufr->directions[i]));
+      }
+    } else {
+      LOG_DEBUG("Unknown packet with index: ", packet.index());
+      ASSERT(false && "Look debug message above");
     }
   }
 
@@ -267,9 +292,14 @@ void ServerGameScene::update(float dt) {
         auto e = m_server->sendAll(network::PlayerMoveResponse{
             .playerID = p.id, .newPos = p.rect.getPosition()});
       }
-
+    } else if (auto *fsr = std::get_if<network::FireballShotRequest>(&packet)) {
+      ASSERT(m_players.find(fsr->playerID) != m_players.end());
+      m_level.fireballs.push_back(Fireball(fsr->pos, fsr->direction));
+      // m_server->sendAll(network::{
+      //     .pos = fsr->pos, .direction = fsr->direction});
     } else {
-      LOG_ERROR("Unknown packet encountered");
+      LOG_ERROR("Unknown packet encountered with index:", packet.index());
+      ASSERT(false && "look debug msg before");
     }
   }
 
@@ -278,16 +308,27 @@ void ServerGameScene::update(float dt) {
   // Sending updated enemies to the clients
 
   m_fullSyncTimer += dt;
-  if (m_fullSyncTimer > 1.f) {
+  if (m_fullSyncTimer > 0.05f) {
     m_fullSyncTimer = 0;
-    std::vector<sf::Vector2f> positions;
-    positions.reserve(m_level.enemies.size());
+    std::vector<sf::Vector2f> enemyPositions;
+    enemyPositions.reserve(m_level.enemies.size());
 
     for (const auto &enemy : m_level.enemies) {
-      positions.push_back(enemy.rect.getPosition());
+      enemyPositions.push_back(enemy.rect.getPosition());
     }
 
-    m_server->sendAll(network::EnemyUpdateResponse(positions));
+    m_server->sendAll(network::EnemyUpdateResponse(enemyPositions));
+
+    std::vector<sf::Vector2f> fireballPositions;
+    std::vector<sf::Vector2f> fireballDirections;
+
+    for (const auto &fireball : m_level.fireballs) {
+      fireballPositions.push_back(fireball.rect.getPosition());
+      fireballDirections.push_back(fireball.direction);
+    }
+
+    m_server->sendAll(network::UpdateFireballsResponse(fireballPositions,
+                                                       fireballDirections));
   }
 }
 void ServerGameScene::draw() {

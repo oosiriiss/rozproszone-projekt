@@ -24,7 +24,9 @@ constexpr inline void appendBytes(std::string &dest, const T &obj) {
 
 template <typename T>
 constexpr inline size_t readBytes(std::string_view src, T &obj, size_t offset) {
-  ASSERT(src.size() > offset && "Offset is smaller than string");
+  ASSERT(src.size() >= offset && "Offset is smaller than string");
+  LOG_DEBUG("buffer size: ", src.size(), " offset: ", offset,
+            " sizeof(T): ", sizeof(T));
   ASSERT(sizeof(T) <= (src.size() - offset) && "Enough bytes to read");
 
   std::memcpy(&obj, src.data() + offset, sizeof(T));
@@ -47,24 +49,21 @@ constexpr inline std::string serialize(const std::vector<T> &a) {
 }
 
 template <typename T>
-constexpr inline std::vector<T> deserialize(std::string_view s) {
-
+constexpr inline size_t deserialize(std::string_view s, std::vector<T> &out) {
   size_t offset = 0;
-
   size_t count = 0;
   offset += readBytes(s, count);
 
-  std::vector<T> ts = std::vector<T>(count);
-
-  LOG_DEBUG("body bytes: ", s.size() - offset, " Needed bytes: ", count);
-  ASSERT(s.size() - offset >= count * sizeof(T) && "Enough elements to read");
+  out.reserve(count);
+  out.clear();
 
   for (int i = 0; i < count; ++i) {
     T x;
     offset += readBytes(s, x, offset);
-    ts.push_back(x);
+    out.push_back(x);
   }
-  return ts;
+
+  return offset;
 }
 
 template <typename T>

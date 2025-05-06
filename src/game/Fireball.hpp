@@ -1,11 +1,14 @@
+#pragma once
+
 #include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/System/Vector2.hpp>
-class Fireball {
 
+struct Fireball {
+  Fireball();
   Fireball(sf::Vector2f startPos, sf::Vector2f direction);
-  ~Fireball();
+  ~Fireball() = default;
 
   void update(float dt);
   void draw(sf::RenderWindow &window) const;

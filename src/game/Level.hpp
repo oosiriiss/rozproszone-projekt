@@ -1,10 +1,12 @@
 #pragma once
 
-#include "Enemy.hpp"
-#include "Player.hpp"
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <cstdint>
+
+#include "Enemy.hpp"
+#include "Fireball.hpp"
+#include "Player.hpp"
 
 enum class TileType : int {
   //
@@ -73,4 +75,5 @@ struct Level {
   std::array<Tile, MAP_WIDTH * MAP_HEIGHT> tiles;
   std::vector<EnemySpawner> spawners;
   std::vector<Enemy> enemies;
+  std::vector<Fireball> fireballs;
 };
