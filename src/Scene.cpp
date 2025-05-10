@@ -204,7 +204,7 @@ void ClientGameScene::update(float dt) {
       LOG_DEBUG("Upadting enemies");
       m_level.enemies.clear();
       for (auto &pos : eur->enemyPos) {
-        m_level.enemies.push_back(Enemy(pos.x, pos.y));
+        m_level.enemies.push_back(Enemy(pos, m_level.base.rect.getPosition()));
       }
     } else if (auto *ufr =
                    std::get_if<network::UpdateFireballsResponse>(&packet)) {
@@ -287,11 +287,11 @@ void ServerGameScene::update(float dt) {
 
       Player &p = m_players[socket->fd];
 
-      if (m_level.canMove(p, toVec(pmr->direction))) {
-        p.rect.move(toVec(pmr->direction));
-        auto e = m_server->sendAll(network::PlayerMoveResponse{
-            .playerID = p.id, .newPos = p.rect.getPosition()});
-      }
+      // if (m_level.canMove(p, toVec(pmr->direction))) {
+      p.rect.move(toVec(pmr->direction));
+      auto e = m_server->sendAll(network::PlayerMoveResponse{
+          .playerID = p.id, .newPos = p.rect.getPosition()});
+      //}
     } else if (auto *fsr = std::get_if<network::FireballShotRequest>(&packet)) {
       ASSERT(m_players.find(fsr->playerID) != m_players.end());
       m_level.fireballs.push_back(Fireball(fsr->pos, fsr->direction));
@@ -304,6 +304,12 @@ void ServerGameScene::update(float dt) {
   }
 
   m_level.update(dt);
+
+  m_level.handleFireballHits();
+  m_level.handleBaseHits();
+
+  if (m_level.base.healthbar.health <= 0)
+    ASSERT(false && "game end Not implemented");
 
   // Sending updated enemies to the clients
 

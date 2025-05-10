@@ -4,6 +4,7 @@
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <cstdint>
 
+#include "Base.hpp"
 #include "Enemy.hpp"
 #include "Fireball.hpp"
 #include "Player.hpp"
@@ -14,6 +15,7 @@ enum class TileType : int {
   Wall = 1,
   PlayerStart = 2,
   EnemySpawner = 3,
+  Base = 4,
   Count // Helper to easily find the number of elements in enum Should be always
         // last
 };
@@ -60,8 +62,9 @@ struct Level {
   void update(float dt);
   bool canMove(const Player &player, sf::Vector2f posDelta) const;
 
-  // Returns the coordinates of the next tile to move to
-  sf::Vector2u findPathTo(sf::Vector2u startTile, sf::Vector2u endTile) const;
+  void handleFireballHits();
+  void handleBaseHits();
+
   constexpr sf::Vector2u
   calculateTileFromPosition(const sf::Vector2f pos) const;
 
@@ -76,4 +79,6 @@ struct Level {
   std::vector<EnemySpawner> spawners;
   std::vector<Enemy> enemies;
   std::vector<Fireball> fireballs;
+
+  Base base;
 };

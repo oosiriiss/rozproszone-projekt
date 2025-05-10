@@ -6,6 +6,7 @@
 
 #include "../debug.hpp"
 #include "../logging.hpp"
+#include "Base.hpp"
 #include "Level.hpp"
 
 Tile::Tile() : rect(), type(TileType::Count) {}
@@ -33,10 +34,10 @@ sf::Color Tile::getColor(TileType type) {
     return sf::Color(120, 120, 120);
   case TileType::PlayerStart:
     return sf::Color::Green;
-    break;
   case TileType::EnemySpawner:
     return sf::Color(180, 120, 120);
-    break;
+  case TileType::Base:
+    return sf::Color::Blue;
   case TileType::Count:
     UNREACHABLE;
   }
@@ -64,6 +65,8 @@ void Level::draw(sf::RenderWindow &window) const {
   for (const auto &f : fireballs) {
     f.draw(window);
   }
+
+  base.draw(window);
 }
 
 void Level::loadLevel(const Level::MapData &data) {
@@ -72,6 +75,18 @@ void Level::loadLevel(const Level::MapData &data) {
   this->m_currentMapID = data.id;
 
   LOG_DEBUG("Loading level: ", (int)data.id);
+
+  sf::Vector2f basePos;
+
+  for (int i = 0; i < tiles.max_size(); ++i) {
+    const int col = i % MAP_WIDTH;
+    const int row = i / MAP_WIDTH;
+
+    const int x = col * TILE_SIZE;
+    const int y = row * TILE_SIZE;
+    if (static_cast<TileType>(data.tiles[i]) == TileType::Base)
+      basePos = {x + TILE_SIZE / 2.f, y + TILE_SIZE / 2.f};
+  }
 
   for (int i = 0; i < tiles.max_size(); ++i) {
 
@@ -86,10 +101,14 @@ void Level::loadLevel(const Level::MapData &data) {
     this->tiles[i] = Tile(x, y, Level::TILE_SIZE, tile);
 
     if (tile == TileType::EnemySpawner) {
-      spawners.push_back(EnemySpawner(2, 3.f, [this, x, y]() {
+      spawners.push_back(EnemySpawner(2, 3.f, [this, x, y, basePos]() {
         LOG_DEBUG("Spawning enemy at x: ", x, " y: ", y);
-        enemies.push_back(Enemy(x, y));
+        enemies.push_back(Enemy({x * 1.f, y * 1.f}, basePos));
       }));
+    } else if (tile == TileType::Base) {
+      this->base.rect.setPosition(
+          {static_cast<float>(x), static_cast<float>(y)});
+      this->base.healthbar.update(this->base.rect.getGlobalBounds());
     }
   }
 
@@ -98,27 +117,18 @@ void Level::loadLevel(const Level::MapData &data) {
 
 void Level::update(float dt) {
 
+  this->base.update(dt);
+
   for (auto &s : spawners) {
     s.update(dt);
   }
 
-  sf::Vector2u destination = {2, 20};
   for (auto &e : enemies) {
-
-    sf::Vector2u currentTile = calculateTileFromPosition(e.rect.getPosition());
-    sf::Vector2u nextTile = findPathTo(currentTile, destination);
-
-    if (nextTile == destination) {
-      LOG_DEBUG("Destiantion reached");
+    if (base.rect.getGlobalBounds().findIntersection(
+            e.rect.getGlobalBounds())) {
+      LOG_INFO("Dealing dmg to base");
     } else {
-      sf::Vector2f direction = sf::Vector2f{
-          static_cast<float>(nextTile.x) - static_cast<float>(currentTile.x),
-          static_cast<float>(nextTile.y) - static_cast<float>(currentTile.y)};
-
-      if (direction.lengthSquared() != 0)
-        direction = direction.normalized();
-
-      e.update(dt, direction);
+      e.update(dt);
     }
   }
 
@@ -134,11 +144,6 @@ void Level::update(float dt) {
         return (pos.x < 0 || pos.x > MAP_WIDTH * TILE_SIZE || pos.y < 0 ||
                 pos.y > MAP_WIDTH * TILE_SIZE);
       })));
-}
-
-sf::Vector2u Level::findPathTo(sf::Vector2u startTile,
-                               sf::Vector2u endTile) const {
-  return {0, 0};
 }
 
 constexpr sf::Vector2u
@@ -178,6 +183,36 @@ bool Level::canMove(const Player &player, sf::Vector2f posDelta) const {
     }
   }
   return true;
+}
+
+void Level::handleFireballHits() {
+
+  for (int i = fireballs.size() - 1; i >= 0; --i) {
+
+    for (int j = enemies.size() - 1; j >= 0; --j) {
+      if (enemies[j].rect.getGlobalBounds().findIntersection(
+              fireballs[i].rect.getGlobalBounds())) {
+
+        enemies[j].healthBar.health -= 10;
+        LOG_INFO("Enemy hit. health left: ", enemies[j].healthBar.health);
+
+        if (enemies[j].healthBar.health <= 0)
+          enemies.erase(enemies.begin() + j);
+
+        fireballs.erase(fireballs.begin() + i);
+      }
+    }
+  }
+}
+
+void Level::handleBaseHits() {
+  for (const Enemy &enemy : enemies) {
+    if (enemy.rect.getGlobalBounds().findIntersection(
+            this->base.rect.getGlobalBounds())) {
+      base.damage();
+      break;
+    }
+  }
 }
 
 constexpr std::array<TileType, Level::MAP_WIDTH * Level::MAP_HEIGHT>
@@ -235,7 +270,7 @@ const Level::MapData Level::Map1Data = {
    0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-   0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+   0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,

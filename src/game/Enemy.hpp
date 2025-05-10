@@ -1,18 +1,23 @@
 #pragma once
+#include "HealthBar.hpp"
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Window.hpp>
 #include <functional>
 
+struct Level;
+
 struct Enemy {
 
-  Enemy(float x, float y);
+  Enemy(sf::Vector2f startPos, sf::Vector2f destination);
   ~Enemy();
 
   void draw(sf::RenderWindow &window) const;
-  void update(float dt, sf::Vector2f direction);
+  void update(float dt);
 
   sf::CircleShape rect;
+  sf::Vector2f destination;
+  HealthBar healthBar;
 };
 
 struct EnemySpawner {
@@ -25,7 +30,6 @@ struct EnemySpawner {
 private:
   uint32_t m_leftToSpawn = 0;
   float m_spawnTimer = 0.f;
-
   float m_spawnDelaySeconds;
 
   std::function<void()> m_spawn;

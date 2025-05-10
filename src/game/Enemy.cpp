@@ -1,17 +1,32 @@
 #include "Enemy.hpp"
+#include "HealthBar.hpp"
 #include "Level.hpp"
-#include <cstdlib>
 
-Enemy::Enemy(float x, float y) : rect() {
-  this->rect.setPosition({x, y});
-  this->rect.setRadius(13);
-  this->rect.setFillColor(sf::Color::Red);
+Enemy::Enemy(sf::Vector2f startPos, sf::Vector2f destination)
+    : rect(), healthBar({startPos, {Level::TILE_SIZE, Level::TILE_SIZE}}, 100) {
+  this->rect.setPosition(startPos);
+  this->rect.setRadius(Level::TILE_SIZE / 2.f);
+  this->rect.setFillColor(sf::Color::Magenta);
+
+  this->destination = destination;
 }
 Enemy::~Enemy() {}
 
-void Enemy::draw(sf::RenderWindow &window) const { window.draw(this->rect); }
-void Enemy::update(float dt, sf::Vector2f direction) {
+void Enemy::draw(sf::RenderWindow &window) const {
+
+  window.draw(this->rect);
+  this->healthBar.draw(window);
+}
+
+void Enemy::update(float dt) {
+
+  sf::Vector2f direction =
+      (this->destination - this->rect.getPosition()).normalized();
+
   this->rect.move(direction * dt * 5.f);
+
+  this->healthBar.update({this->rect.getPosition(),
+                          {this->rect.getRadius(), this->rect.getRadius()}});
 }
 
 EnemySpawner::EnemySpawner(uint32_t enemiesToSpawn, float spawnDelaySeconds,

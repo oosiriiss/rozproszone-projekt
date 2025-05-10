@@ -26,6 +26,8 @@ set(SOURCES
    src/game/Enemy.cpp
    src/game/Level.cpp
    src/game/Fireball.cpp
+   src/game/Base.cpp
+   src/game/HealthBar.cpp
    src/network/socket.cpp
    src/network/server.cpp
    src/network/client.cpp
