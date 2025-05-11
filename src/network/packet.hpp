@@ -70,6 +70,14 @@ struct UpdateFireballsResponse : public Serializable {
   void deserialize(std::string_view body) override;
 };
 
+struct BaseHitResponse {
+  int newHealth;
+};
+
+struct GameOverResponse {
+  int isWon;
+};
+
 void printBytes(std::string_view s);
 
 // TODO :: Change this to inheritance?
@@ -79,7 +87,7 @@ typedef std::variant<JoinLobbyRequest, GameReadyRequest, PlayerMoveRequest,
 // TODO :: Change this to inheritance?
 typedef std::variant<JoinLobbyResponse, StartGameResponse, GameReadyResponse,
                      PlayerMoveResponse, EnemyUpdateResponse,
-                     UpdateFireballsResponse>
+                     UpdateFireballsResponse, BaseHitResponse, GameOverResponse>
     ServerPacket;
 
 template <class PACKET> std::string encodePacket(const PACKET &packet);

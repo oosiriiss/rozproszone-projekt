@@ -63,7 +63,7 @@ struct Level {
   bool canMove(const Player &player, sf::Vector2f posDelta) const;
 
   void handleFireballHits();
-  void handleBaseHits();
+  bool handleBaseHits();
 
   constexpr sf::Vector2u
   calculateTileFromPosition(const sf::Vector2f pos) const;

@@ -133,6 +133,8 @@ void Level::update(float dt) {
     if (base.rect.getGlobalBounds().findIntersection(
             e.rect.getGlobalBounds())) {
       LOG_INFO("Dealing dmg to base");
+      // enemy not moving
+      e.update(0);
     } else {
       e.update(dt);
     }
@@ -193,32 +195,34 @@ bool Level::canMove(const Player &player, sf::Vector2f posDelta) const {
 
 void Level::handleFireballHits() {
 
-  for (int i = fireballs.size() - 1; i >= 0; --i) {
+  for (int f = fireballs.size() - 1; f >= 0; --f) {
 
-    for (int j = enemies.size() - 1; j >= 0; --j) {
-      if (enemies[j].rect.getGlobalBounds().findIntersection(
-              fireballs[i].rect.getGlobalBounds())) {
+    for (int e = enemies.size() - 1; e >= 0; --e) {
+      if (enemies[e].rect.getGlobalBounds().findIntersection(
+              fireballs[f].rect.getGlobalBounds())) {
 
-        enemies[j].healthBar.health -= 10;
-        LOG_INFO("Enemy hit. health left: ", enemies[j].healthBar.health);
+        enemies[e].healthBar.health -= 10;
+        LOG_INFO("Enemy hit. health left: ", enemies[e].healthBar.health);
 
-        if (enemies[j].healthBar.health <= 0)
-          enemies.erase(enemies.begin() + j);
+        if (enemies[e].healthBar.health <= 0)
+          enemies.erase(enemies.begin() + e);
 
-        fireballs.erase(fireballs.begin() + i);
+        fireballs.erase(fireballs.begin() + f);
+        break;
       }
     }
   }
 }
 
-void Level::handleBaseHits() {
+bool Level::handleBaseHits() {
   for (const Enemy &enemy : enemies) {
     if (enemy.rect.getGlobalBounds().findIntersection(
             this->base.rect.getGlobalBounds())) {
       base.damage();
-      break;
+      return true;
     }
   }
+  return false;
 }
 
 constexpr std::array<TileType, Level::MAP_WIDTH * Level::MAP_HEIGHT>

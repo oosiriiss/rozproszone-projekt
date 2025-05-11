@@ -4,7 +4,6 @@
 #include <SFML/System/Err.hpp>
 #include <arpa/inet.h>
 #include <cerrno>
-#include <csignal>
 #include <fcntl.h>
 #include <map>
 #include <netinet/in.h>

@@ -12,7 +12,11 @@ Base::Base(sf::Vector2f pos) : healthbar(this->rect.getGlobalBounds(), 100) {
   m_dmgCooldown = 0.f;
 }
 
-void Base::update(float dt) { m_dmgCooldown -= dt; }
+void Base::update(float dt) {
+  m_dmgCooldown -= dt;
+
+  this->healthbar.update(this->rect.getGlobalBounds());
+}
 
 void Base::damage() {
 

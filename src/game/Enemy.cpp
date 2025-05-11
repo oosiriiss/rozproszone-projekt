@@ -23,7 +23,7 @@ void Enemy::update(float dt) {
   sf::Vector2f direction =
       (this->destination - this->rect.getPosition()).normalized();
 
-  this->rect.move(direction * dt * 5.f);
+  this->rect.move(direction * dt * 20.f);
 
   this->healthBar.update({this->rect.getPosition(),
                           {this->rect.getRadius(), this->rect.getRadius()}});

@@ -1,6 +1,7 @@
 #include "Scene.hpp"
 #include "Application.hpp"
 #include "debug.hpp"
+#include "game/Fireball.hpp"
 #include "game/Player.hpp"
 #include "logging.hpp"
 #include "network/packet.hpp"
@@ -160,13 +161,15 @@ void ClientGameScene::update(float dt) {
   if (Application::isMousePressed(sf::Mouse::Button::Left)) {
 
     sf::Vector2f dir =
-        (Application::getMousePosition() - m_player.rect.getPosition())
+        (Application::getMousePosition() - m_player.rect.getPosition() -
+         m_player.rect.getSize() / 2.f)
             .normalized();
     m_client->send(network::FireballShotRequest{
         .playerID = m_player.id,
-        .pos = m_player.rect.getPosition() + (m_player.rect.getSize() / 2.f),
-        .direction = dir,
-    });
+        .fireball = Fireball::DTO{
+            .pos = m_player.rect.getGlobalBounds().getCenter(),
+            .direction = dir,
+        }});
   }
 
   m_playerSyncTimer += dt;
@@ -203,19 +206,29 @@ void ClientGameScene::update(float dt) {
     } else if (auto *eur = std::get_if<network::EnemyUpdateResponse>(&packet)) {
       LOG_DEBUG("Upadting enemies");
       m_level.enemies.clear();
-      for (auto &pos : eur->enemyPos) {
-        m_level.enemies.push_back(Enemy(pos, m_level.base.rect.getPosition()));
+      for (auto &enemyDTO : eur->enemies) {
+        Enemy e = Enemy(enemyDTO.pos, enemyDTO.destination);
+        e.healthBar.health = enemyDTO.health;
+        m_level.enemies.push_back(e);
       }
     } else if (auto *ufr =
                    std::get_if<network::UpdateFireballsResponse>(&packet)) {
 
-      ASSERT(ufr->directions.size() == ufr->positions.size() &&
-             "Vectors must be the same size");
       m_level.fireballs.clear();
-      for (int i = 0; i < ufr->directions.size(); ++i) {
-        m_level.fireballs.push_back(
-            Fireball(ufr->positions[i], ufr->directions[i]));
+      for (const auto &fireball : ufr->fireballs) {
+        m_level.fireballs.push_back(Fireball(fireball.pos, fireball.direction));
       }
+    } else if (auto *bhr = std::get_if<network::BaseHitResponse>(&packet)) {
+      m_level.base.healthbar.health = bhr->newHealth;
+    } else if (auto *gor = std::get_if<network::GameOverResponse>(&packet)) {
+
+      if (gor->isWon)
+        LOG_INFO("Game won!");
+      else
+        LOG_INFO("Game lost.");
+
+      m_sceneManager.popScene();
+
     } else {
       LOG_DEBUG("Unknown packet with index: ", packet.index());
       ASSERT(false && "Look debug message above");
@@ -296,7 +309,8 @@ void ServerGameScene::update(float dt) {
       //}
     } else if (auto *fsr = std::get_if<network::FireballShotRequest>(&packet)) {
       ASSERT(m_players.find(fsr->playerID) != m_players.end());
-      m_level.fireballs.push_back(Fireball(fsr->pos, fsr->direction));
+      m_level.fireballs.push_back(
+          Fireball(fsr->fireball.pos, fsr->fireball.direction));
       // m_server->sendAll(network::{
       //     .pos = fsr->pos, .direction = fsr->direction});
     } else {
@@ -308,35 +322,41 @@ void ServerGameScene::update(float dt) {
   m_level.update(dt);
 
   m_level.handleFireballHits();
-  m_level.handleBaseHits();
-
-  if (m_level.base.healthbar.health <= 0)
-    ASSERT(false && "game end Not implemented");
+  if (m_level.handleBaseHits()) {
+    if (m_level.base.healthbar.health <= 0)
+      m_server->sendAll(network::GameOverResponse{.isWon = false});
+    else
+      m_server->sendAll(
+          network::BaseHitResponse{.newHealth = m_level.base.healthbar.health});
+  }
 
   // Sending updated enemies to the clients
 
   m_fullSyncTimer += dt;
   if (m_fullSyncTimer > 0.05f) {
     m_fullSyncTimer = 0;
-    std::vector<sf::Vector2f> enemyPositions;
-    enemyPositions.reserve(m_level.enemies.size());
+    std::vector<Enemy::DTO> enemyDTOs;
+    enemyDTOs.reserve(m_level.enemies.size());
 
     for (const auto &enemy : m_level.enemies) {
-      enemyPositions.push_back(enemy.rect.getPosition());
+      enemyDTOs.push_back(Enemy::DTO{.pos = enemy.rect.getPosition(),
+                                     .destination = enemy.destination,
+                                     .health = enemy.healthBar.health});
     }
 
-    m_server->sendAll(network::EnemyUpdateResponse(enemyPositions));
+    m_server->sendAll(network::EnemyUpdateResponse(enemyDTOs));
 
-    std::vector<sf::Vector2f> fireballPositions;
-    std::vector<sf::Vector2f> fireballDirections;
+    std::vector<Fireball::DTO> fireballDTOs;
+    fireballDTOs.reserve(m_level.fireballs.size());
 
     for (const auto &fireball : m_level.fireballs) {
-      fireballPositions.push_back(fireball.rect.getPosition());
-      fireballDirections.push_back(fireball.direction);
+      fireballDTOs.push_back(Fireball::DTO{
+          .pos = fireball.rect.getPosition(),
+          .direction = fireball.direction,
+      });
     }
 
-    m_server->sendAll(network::UpdateFireballsResponse(fireballPositions,
-                                                       fireballDirections));
+    m_server->sendAll(network::UpdateFireballsResponse(fireballDTOs));
   }
 }
 void ServerGameScene::draw() {
