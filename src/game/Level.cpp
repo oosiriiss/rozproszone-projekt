@@ -49,7 +49,10 @@ Level::Level() : tiles{} {
   LOG_INFO("Loading default level data");
   loadLevel(this->Map1Data);
 }
-Level::Level(const MapData &tilemap) : tiles({}) { loadLevel(tilemap); }
+Level::Level(const MapData &tilemap, bool isServer)
+    : tiles({}), isServer(isServer) {
+  loadLevel(tilemap);
+}
 Level::~Level() { LOG_INFO("Destroying level"); }
 
 void Level::draw(sf::RenderWindow &window) const {
@@ -86,6 +89,7 @@ void Level::loadLevel(const Level::MapData &data) {
     const int y = row * TILE_SIZE;
     if (static_cast<TileType>(data.tiles[i]) == TileType::Base)
       basePos = {x + TILE_SIZE / 2.f, y + TILE_SIZE / 2.f};
+    this->base = Base({x * 1.f, y * 1.f});
   }
 
   for (int i = 0; i < tiles.max_size(); ++i) {
@@ -101,10 +105,12 @@ void Level::loadLevel(const Level::MapData &data) {
     this->tiles[i] = Tile(x, y, Level::TILE_SIZE, tile);
 
     if (tile == TileType::EnemySpawner) {
-      spawners.push_back(EnemySpawner(2, 3.f, [this, x, y, basePos]() {
-        LOG_DEBUG("Spawning enemy at x: ", x, " y: ", y);
-        enemies.push_back(Enemy({x * 1.f, y * 1.f}, basePos));
-      }));
+      if (this->isServer) {
+        spawners.push_back(EnemySpawner(2, 3.f, [this, x, y, basePos]() {
+          LOG_DEBUG("Spawning enemy at x: ", x, " y: ", y);
+          enemies.push_back(Enemy({x * 1.f, y * 1.f}, basePos));
+        }));
+      }
     } else if (tile == TileType::Base) {
       this->base.rect.setPosition(
           {static_cast<float>(x), static_cast<float>(y)});

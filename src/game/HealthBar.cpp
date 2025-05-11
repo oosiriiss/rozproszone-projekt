@@ -3,7 +3,7 @@
 #include <SFML/Graphics/RenderWindow.hpp>
 
 const float HealthBar::MAX_WIDTH = Level::TILE_SIZE;
-const float HealthBar::HEIGHT = 8.f;
+const float HealthBar::HEIGHT = 3.f;
 
 HealthBar::HealthBar(sf::FloatRect parent, int maxHealth) {
 
@@ -11,9 +11,9 @@ HealthBar::HealthBar(sf::FloatRect parent, int maxHealth) {
   this->health = maxHealth;
 
   this->rect.setSize({MAX_WIDTH, HEIGHT});
-  this->rect.setFillColor(sf::Color::Red);
+  this->rect.setFillColor(sf::Color::Green);
   this->rectBG.setSize({MAX_WIDTH, HEIGHT});
-  this->rectBG.setFillColor(sf::Color::Black);
+  this->rectBG.setFillColor(sf::Color::Red);
 
   update(parent);
 }
@@ -28,9 +28,7 @@ void HealthBar::update(sf::FloatRect parent) {
   this->rect.setPosition(pos);
   this->rectBG.setPosition(pos);
 
-  this->rect.setSize(
-      {(static_cast<float>(health) / static_cast<float>(maxHealth)) * MAX_WIDTH,
-       HEIGHT});
+  this->rect.setSize({(health * 1.f / maxHealth) * MAX_WIDTH, HEIGHT});
 }
 
 void HealthBar::draw(sf::RenderWindow &window) const {

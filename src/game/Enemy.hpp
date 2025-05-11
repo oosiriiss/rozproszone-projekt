@@ -3,6 +3,7 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Window.hpp>
+#include <atomic>
 #include <functional>
 
 struct Level;
@@ -18,6 +19,12 @@ struct Enemy {
   sf::CircleShape rect;
   sf::Vector2f destination;
   HealthBar healthBar;
+
+  struct DTO {
+    sf::Vector2f pos;
+    sf::Vector2f destination;
+    int health;
+  };
 };
 
 struct EnemySpawner {

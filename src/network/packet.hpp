@@ -48,27 +48,23 @@ struct PlayerMoveResponse {
 
 struct EnemyUpdateResponse : Serializable {
   EnemyUpdateResponse() = default;
-  EnemyUpdateResponse(std::vector<sf::Vector2f> positions);
-  std::vector<sf::Vector2f> enemyPos;
+  EnemyUpdateResponse(std::vector<Enemy::DTO> enemies);
+  std::vector<Enemy::DTO> enemies;
   std::string serialize() const override;
   void deserialize(std::string_view body) override;
 };
 
 struct FireballShotRequest {
   int32_t playerID;
-  sf::Vector2f pos;
-  sf::Vector2f direction;
+  Fireball::DTO fireball;
 };
 
 struct UpdateFireballsResponse : public Serializable {
 
   UpdateFireballsResponse() = default;
-  UpdateFireballsResponse(std::vector<sf::Vector2f> positions,
-                          std::vector<sf::Vector2f> directions);
+  UpdateFireballsResponse(std::vector<Fireball::DTO> fireballs);
 
-  // Todo :: introduce some kind of dto
-  std::vector<sf::Vector2f> positions;
-  std::vector<sf::Vector2f> directions;
+  std::vector<Fireball::DTO> fireballs;
 
   std::string serialize() const override;
   void deserialize(std::string_view body) override;

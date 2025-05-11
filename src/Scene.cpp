@@ -178,7 +178,7 @@ void ClientGameScene::update(float dt) {
 
     if (auto *grr = std::get_if<network::GameReadyResponse>(&packet)) {
       LOG_DEBUG("Game ready response");
-      m_level = Level(grr->map);
+      m_level = Level(grr->map, false);
       LOG_DEBUG("Level loaded");
 
       m_player = Player(grr->thisPlayerID);
@@ -223,6 +223,7 @@ void ClientGameScene::update(float dt) {
   }
 
   m_player.update();
+  m_level.update(dt);
 }
 void ClientGameScene::draw() {
   if (m_isInitialized) {
@@ -240,9 +241,10 @@ void ClientGameScene::draw() {
 
 ServerGameScene::ServerGameScene(std::shared_ptr<network::Server> server,
                                  SCENE_PARAMS)
-    : SCENE_CONSTRUCTOR, m_server(server), m_level() {
+    : SCENE_CONSTRUCTOR, m_server(server), m_level(Level::Map1Data, true) {
 
   LOG_INFO("Server game scene");
+
   m_server->sendAll(network::StartGameResponse{});
 
   for (const auto &client : m_server->getClients()) {

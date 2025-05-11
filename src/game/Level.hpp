@@ -54,7 +54,7 @@ struct Level {
   };
 
   Level();
-  Level(const MapData &initalMap);
+  Level(const MapData &initalMap, bool isServer);
   ~Level();
 
   void draw(sf::RenderWindow &window) const;
@@ -81,4 +81,7 @@ struct Level {
   std::vector<Fireball> fireballs;
 
   Base base;
+
+private:
+  bool isServer;
 };

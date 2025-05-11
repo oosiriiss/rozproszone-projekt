@@ -15,4 +15,9 @@ struct Fireball {
 
   sf::CircleShape rect;
   sf::Vector2f direction;
+
+  struct DTO {
+    sf::Vector2f pos;
+    sf::Vector2f direction;
+  };
 };
