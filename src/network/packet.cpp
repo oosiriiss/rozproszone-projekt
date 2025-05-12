@@ -18,6 +18,45 @@ void printBytes(std::string_view s) {
   std::cout << std::endl;
 }
 
+JoinLobbyResponse::JoinLobbyResponse(
+    std::unordered_map<int32_t, bool> lobbyPlayers)
+    : lobbyPlayers(lobbyPlayers) {}
+
+std::string JoinLobbyResponse::serialize() const {
+  std::string s;
+
+  internal::appendBytes(s, this->lobbyPlayers.size());
+  for (auto [p, r] : this->lobbyPlayers) {
+    internal::appendBytes(s, p);
+    internal::appendBytes(s, r);
+  }
+
+  return s;
+}
+
+void JoinLobbyResponse::deserialize(std::string_view body) {
+
+  LOG_DEBUG("Deserializing JoinLobbyResponse body size: ", body.size());
+
+  this->lobbyPlayers = std::unordered_map<int32_t, bool>();
+
+  size_t size = 0;
+  size_t offset = internal::readBytes(body, size);
+
+  LOG_DEBUG("Read size: ", size);
+
+  for (int i = 0; i < size; ++i) {
+
+    int32_t p = -1;
+    bool r = false;
+
+    offset += internal::readBytes(body.substr(offset, std::string::npos), p);
+    offset += internal::readBytes(body.substr(offset, std::string::npos), r);
+
+    this->lobbyPlayers[p] = r;
+  }
+}
+
 EnemyUpdateResponse::EnemyUpdateResponse(std::vector<Enemy::DTO> enemies)
     : enemies(enemies) {}
 std::string EnemyUpdateResponse::serialize() const {

@@ -7,7 +7,6 @@
 #include <SFML/Window/Keyboard.hpp>
 #include <SFML/Window/Mouse.hpp>
 #include <SFML/Window/WindowEnums.hpp>
-#include <algorithm>
 #include <csignal>
 #include <iostream>
 

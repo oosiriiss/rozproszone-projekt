@@ -51,7 +51,11 @@ void ConnectClientScene::update(float dt) {
       auto packet = *msg;
 
       if (auto *jlr = std::get_if<network::JoinLobbyResponse>(&packet)) {
-        m_lobbyMembers[jlr->playerID] = false;
+
+        m_lobbyMembers.clear();
+        for (auto [p, r] : jlr->lobbyPlayers) {
+          m_lobbyMembers[p] = r;
+        }
       } else if (auto *sgr = std::get_if<network::StartGameResponse>(&packet)) {
         m_sceneManager.pushScene(new ClientGameScene(m_client, SCENE_ARGS));
       } else if (auto *lrr =
@@ -111,7 +115,7 @@ void ConnectServerScene::update(float dt) {
     if (auto *jlr = std::get_if<network::JoinLobbyRequest>(&msg)) {
       LOG_INFO("Received JoinLobbyRequest");
       m_lobbyMembers[socket->fd] = false;
-      m_server->sendAll(network::JoinLobbyResponse{.playerID = socket->fd});
+      m_server->sendAll(network::JoinLobbyResponse(m_lobbyMembers));
     } else if (auto *lrr = std::get_if<network::LobbyReadyRequst>(&msg)) {
       m_lobbyMembers[socket->fd] = lrr->isReady;
       m_server->sendAll(network::LobbyReadyResponse{.playerID = socket->fd,

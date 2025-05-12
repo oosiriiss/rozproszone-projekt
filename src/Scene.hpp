@@ -1,7 +1,6 @@
 #pragma once
 
 #include "game/Player.hpp"
-#include "logging.hpp"
 #include "network/client.hpp"
 #include "network/server.hpp"
 #include <memory>
@@ -42,8 +41,7 @@ public:
 
 private:
   std::stack<Scene *> m_scenes;
-;
-
+};
 class ConnectClientScene : public Scene {
 
 public:

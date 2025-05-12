@@ -24,8 +24,13 @@ struct LobbyReadyResponse {
   int32_t playerID;
   bool isReady;
 };
-struct JoinLobbyResponse {
-  int32_t playerID;
+struct JoinLobbyResponse : public Serializable {
+  JoinLobbyResponse() = default;
+  JoinLobbyResponse(std::unordered_map<int32_t, bool> lobbyPlayers);
+  std::unordered_map<int32_t, bool> lobbyPlayers;
+
+  std::string serialize() const override;
+  void deserialize(std::string_view body) override;
 };
 
 struct StartGameResponse {};
@@ -54,7 +59,7 @@ struct PlayerMoveResponse {
   sf::Vector2f newPos;
 };
 
-struct EnemyUpdateResponse : Serializable {
+struct EnemyUpdateResponse : public Serializable {
   EnemyUpdateResponse() = default;
   EnemyUpdateResponse(std::vector<Enemy::DTO> enemies);
   std::vector<Enemy::DTO> enemies;
