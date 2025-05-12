@@ -7,6 +7,7 @@
 #include "network/packet.hpp"
 #include "ui/ui.hpp"
 #include <memory>
+#include <string>
 
 Scene::Scene(SCENE_PARAMS) : m_sceneManager(sceneManager), m_window(window) {}
 
@@ -25,8 +26,10 @@ void SceneManager::pushScene(Scene *scene) {
 
 void SceneManager::popScene() {
   ASSERT(!m_scenes.empty());
+  LOG_DEBUG("Popping scene (Scenes: ", m_scenes.size(), ")");
   delete m_scenes.top();
   m_scenes.pop();
+  LOG_DEBUG("Popped (Scenes: ", m_scenes.size(), ")");
 }
 
 Scene *SceneManager::getCurrentScene() const {
@@ -48,9 +51,12 @@ void ConnectClientScene::update(float dt) {
       auto packet = *msg;
 
       if (auto *jlr = std::get_if<network::JoinLobbyResponse>(&packet)) {
-        m_connectedPlayerCount = jlr->connectedPlayersCount;
+        m_lobbyMembers[jlr->playerID] = false;
       } else if (auto *sgr = std::get_if<network::StartGameResponse>(&packet)) {
         m_sceneManager.pushScene(new ClientGameScene(m_client, SCENE_ARGS));
+      } else if (auto *lrr =
+                     std::get_if<network::LobbyReadyResponse>(&packet)) {
+        m_lobbyMembers[lrr->playerID] = lrr->isReady;
       } else {
         LOG_ERROR("Unknown packet");
       }
@@ -63,9 +69,15 @@ void ConnectClientScene::draw() {
   ui::Text(targetIP);
 
   if (m_isConnected) {
-    ui::Text("Waiting for other players. Connected: " +
-             std::to_string(m_connectedPlayerCount));
-
+    ui::Text("Waiting for the game to start");
+    for (auto [id, isReady] : m_lobbyMembers) {
+      ui::Text("Player: " + std::to_string(id) +
+               std::string((isReady) ? " Ready " : " Not ready"));
+    }
+    if (ui::Button("Ready")) {
+      m_isReady = !m_isReady;
+      m_client->send(network::LobbyReadyRequst{.isReady = m_isReady});
+    }
   } else {
     if (ui::Button("Connect")) {
       LOG_INFO("Connecting to server ", targetIP, ":", targetPort);
@@ -98,20 +110,15 @@ void ConnectServerScene::update(float dt) {
     auto [socket, msg] = *sockmsg;
     if (auto *jlr = std::get_if<network::JoinLobbyRequest>(&msg)) {
       LOG_INFO("Received JoinLobbyRequest");
-      m_connectedPlayerCount++;
-      m_server->sendAll(network::JoinLobbyResponse{.connectedPlayersCount =
-                                                       m_connectedPlayerCount});
+      m_lobbyMembers[socket->fd] = false;
+      m_server->sendAll(network::JoinLobbyResponse{.playerID = socket->fd});
+    } else if (auto *lrr = std::get_if<network::LobbyReadyRequst>(&msg)) {
+      m_lobbyMembers[socket->fd] = lrr->isReady;
+      m_server->sendAll(network::LobbyReadyResponse{.playerID = socket->fd,
+                                                    .isReady = lrr->isReady});
     } else {
       LOG_ERROR("Unknown packet");
     }
-  }
-
-  if (m_connectedPlayerCount == 2) {
-    LOG_INFO("Players connected. Starting game");
-
-    auto gamescene = new ServerGameScene(m_server, m_sceneManager, m_window);
-    LOG_DEBUG("Game scene created");
-    m_sceneManager.pushScene(gamescene);
   }
 }
 void ConnectServerScene::draw() {
@@ -119,8 +126,23 @@ void ConnectServerScene::draw() {
   ui::Text("Server Address:" + std::string(bindIP));
 
   if (m_isBound) {
-    ui::Text("Waiting for clients... (Connected: " +
-             std::to_string(m_connectedPlayerCount) + ")");
+    for (auto [id, isReady] : m_lobbyMembers) {
+      ui::Text("Player: " + std::to_string(id) +
+               std::string((isReady) ? " Ready " : " Not ready"));
+    }
+
+    if (m_lobbyMembers.size() >= 2 && allPlayersReady()) {
+      if (ui::Button("Press to start")) {
+        LOG_INFO("Players connected. Starting game");
+        auto gamescene =
+            new ServerGameScene(m_server, m_sceneManager, m_window);
+        LOG_DEBUG("Game scene created");
+        m_sceneManager.pushScene(gamescene);
+      }
+    } else {
+      ui::Text("Waiting for clients... (Connected: " +
+               std::to_string(m_lobbyMembers.size()) + ")");
+    }
   } else {
     if (ui::Button("Bind")) {
       LOG_INFO("Binding server ", bindIP, ":", bindPort);
@@ -133,6 +155,14 @@ void ConnectServerScene::draw() {
       }
     }
   }
+}
+
+bool ConnectServerScene::allPlayersReady() const {
+  for (auto [p, ready] : m_lobbyMembers) {
+    if (!ready)
+      return false;
+  }
+  return true;
 }
 
 ClientGameScene::ClientGameScene(std::shared_ptr<network::Client> client,
@@ -226,8 +256,8 @@ void ClientGameScene::update(float dt) {
         LOG_INFO("Game won!");
       else
         LOG_INFO("Game lost.");
-
       m_sceneManager.popScene();
+      return;
 
     } else {
       LOG_DEBUG("Unknown packet with index: ", packet.index());
@@ -328,6 +358,12 @@ void ServerGameScene::update(float dt) {
     else
       m_server->sendAll(
           network::BaseHitResponse{.newHealth = m_level.base.healthbar.health});
+  }
+
+  if (m_level.isLevelFinished()) {
+    m_server->sendAll(network::GameOverResponse{.isWon = true});
+    m_sceneManager.popScene();
+    return;
   }
 
   // Sending updated enemies to the clients

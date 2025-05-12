@@ -45,3 +45,5 @@ void EnemySpawner::update(float dt) {
     m_spawnTimer = 0;
   }
 }
+
+bool EnemySpawner::isDoneSpawning() const { return m_leftToSpawn == 0; }

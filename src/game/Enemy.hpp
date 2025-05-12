@@ -33,6 +33,7 @@ struct EnemySpawner {
   ~EnemySpawner();
 
   void update(float dt);
+  bool isDoneSpawning() const;
 
 private:
   uint32_t m_leftToSpawn = 0;

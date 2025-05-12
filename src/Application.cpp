@@ -40,7 +40,7 @@ Application::Application(int argc, char *argv[]) : m_assetManager("./assets") {
 
   constexpr int WINDOW_WIDTH = 640;
   constexpr int WINDOW_HEIGHT = 640;
-  constexpr int WINDOW_STYLE = sf::Style::Titlebar; 
+  constexpr int WINDOW_STYLE = sf::Style::Titlebar;
 
   m_window = sf::RenderWindow(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}),
                               title, WINDOW_STYLE);

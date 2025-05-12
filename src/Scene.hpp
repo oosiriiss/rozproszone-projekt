@@ -42,7 +42,7 @@ public:
 
 private:
   std::stack<Scene *> m_scenes;
-};
+;
 
 class ConnectClientScene : public Scene {
 
@@ -59,7 +59,9 @@ public:
 private:
   std::shared_ptr<network::Client> m_client;
   bool m_isConnected = false;
-  uint8_t m_connectedPlayerCount = 0;
+  bool m_isReady = false;
+
+  std::unordered_map<int32_t, bool> m_lobbyMembers;
 
   SceneManager &m_sceneManager;
   sf::RenderWindow &m_window;
@@ -74,13 +76,16 @@ public:
   void update(float dt) override;
   void draw() override;
 
+  bool allPlayersReady() const;
+
   const char *bindIP;
   const uint16_t bindPort;
 
 private:
   std::shared_ptr<network::Server> m_server;
   bool m_isBound = false;
-  uint8_t m_connectedPlayerCount = 0;
+
+  std::unordered_map<int32_t, bool> m_lobbyMembers;
 
 private:
 };

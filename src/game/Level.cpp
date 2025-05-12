@@ -193,6 +193,19 @@ bool Level::canMove(const Player &player, sf::Vector2f posDelta) const {
   return true;
 }
 
+bool Level::isLevelFinished() const {
+
+  if (this->enemies.size() > 0)
+    return false;
+
+  for (const auto &spawner : this->spawners) {
+    if (!spawner.isDoneSpawning())
+      return false;
+  }
+
+  return true;
+}
+
 void Level::handleFireballHits() {
 
   for (int f = fireballs.size() - 1; f >= 0; --f) {

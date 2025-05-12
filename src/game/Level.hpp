@@ -62,6 +62,8 @@ struct Level {
   void update(float dt);
   bool canMove(const Player &player, sf::Vector2f posDelta) const;
 
+  bool isLevelFinished() const;
+
   void handleFireballHits();
   bool handleBaseHits();
 

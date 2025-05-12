@@ -16,8 +16,16 @@ class Serializable {
 };
 
 struct JoinLobbyRequest {};
+struct LobbyReadyRequst {
+  bool isReady;
+};
+
+struct LobbyReadyResponse {
+  int32_t playerID;
+  bool isReady;
+};
 struct JoinLobbyResponse {
-  uint8_t connectedPlayersCount;
+  int32_t playerID;
 };
 
 struct StartGameResponse {};
@@ -81,12 +89,12 @@ struct GameOverResponse {
 void printBytes(std::string_view s);
 
 // TODO :: Change this to inheritance?
-typedef std::variant<JoinLobbyRequest, GameReadyRequest, PlayerMoveRequest,
-                     FireballShotRequest>
+typedef std::variant<JoinLobbyRequest, LobbyReadyRequst, GameReadyRequest,
+                     PlayerMoveRequest, FireballShotRequest>
     ClientPacket;
 // TODO :: Change this to inheritance?
-typedef std::variant<JoinLobbyResponse, StartGameResponse, GameReadyResponse,
-                     PlayerMoveResponse, EnemyUpdateResponse,
+typedef std::variant<JoinLobbyResponse, LobbyReadyResponse, StartGameResponse,
+                     GameReadyResponse, PlayerMoveResponse, EnemyUpdateResponse,
                      UpdateFireballsResponse, BaseHitResponse, GameOverResponse>
     ServerPacket;
 
