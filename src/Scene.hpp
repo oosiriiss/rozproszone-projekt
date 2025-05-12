@@ -19,6 +19,7 @@ struct Scene {
   virtual ~Scene() = default;
 
   virtual void update(float dt) = 0;
+  virtual void resume() {};
   virtual void draw() = 0;
 
 protected:
@@ -72,6 +73,7 @@ public:
   ~ConnectServerScene();
 
   void update(float dt) override;
+  void resume() override;
   void draw() override;
 
   bool allPlayersReady() const;

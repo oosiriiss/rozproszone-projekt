@@ -29,6 +29,8 @@ void SceneManager::popScene() {
   LOG_DEBUG("Popping scene (Scenes: ", m_scenes.size(), ")");
   delete m_scenes.top();
   m_scenes.pop();
+  ASSERT(!m_scenes.empty());
+  m_scenes.top()->resume();
   LOG_DEBUG("Popped (Scenes: ", m_scenes.size(), ")");
 }
 
@@ -101,6 +103,14 @@ ConnectServerScene::ConnectServerScene(const char *ip, uint16_t port,
     : SCENE_CONSTRUCTOR, bindIP(ip), bindPort(port),
       m_server(std::make_shared<network::Server>()) {}
 ConnectServerScene::~ConnectServerScene() {}
+
+void ConnectServerScene::resume() {
+  for (auto [p, r] : m_lobbyMembers) {
+    m_lobbyMembers[p] = false;
+  }
+
+  m_server->sendAll(network::JoinLobbyResponse(m_lobbyMembers));
+}
 void ConnectServerScene::update(float dt) {
 
   if (!m_isBound)
@@ -124,6 +134,13 @@ void ConnectServerScene::update(float dt) {
       LOG_ERROR("Unknown packet");
     }
   }
+
+  if (m_lobbyMembers.size() > 0 && allPlayersReady()) {
+    LOG_INFO("Players connected. Starting game");
+    auto gamescene = new ServerGameScene(m_server, m_sceneManager, m_window);
+    LOG_DEBUG("Game scene created");
+    m_sceneManager.pushScene(gamescene);
+  }
 }
 void ConnectServerScene::draw() {
   ui::Text(" ");
@@ -135,18 +152,8 @@ void ConnectServerScene::draw() {
                std::string((isReady) ? " Ready " : " Not ready"));
     }
 
-    if (m_lobbyMembers.size() >= 2 && allPlayersReady()) {
-      if (ui::Button("Press to start")) {
-        LOG_INFO("Players connected. Starting game");
-        auto gamescene =
-            new ServerGameScene(m_server, m_sceneManager, m_window);
-        LOG_DEBUG("Game scene created");
-        m_sceneManager.pushScene(gamescene);
-      }
-    } else {
-      ui::Text("Waiting for clients... (Connected: " +
-               std::to_string(m_lobbyMembers.size()) + ")");
-    }
+    ui::Text("Waiting for clients... (Connected: " +
+             std::to_string(m_lobbyMembers.size()) + ")");
   } else {
     if (ui::Button("Bind")) {
       LOG_INFO("Binding server ", bindIP, ":", bindPort);
@@ -373,7 +380,7 @@ void ServerGameScene::update(float dt) {
   // Sending updated enemies to the clients
 
   m_fullSyncTimer += dt;
-  if (m_fullSyncTimer > 0.05f) {
+  if (m_fullSyncTimer > 0.3f) {
     m_fullSyncTimer = 0;
     std::vector<Enemy::DTO> enemyDTOs;
     enemyDTOs.reserve(m_level.enemies.size());
