@@ -1,6 +1,7 @@
 #pragma once
 #include "packet.hpp"
 #include "socket.hpp"
+#include <queue>
 
 namespace network {
 struct Client {
@@ -15,6 +16,11 @@ public:
 
 private:
   std::optional<SocketError> receive();
+  std::priority_queue<
+      internal::PacketWrapper<network::ServerPacket>,
+      std::vector<internal::PacketWrapper<network::ServerPacket>>,
+      internal::PacketCompare<network::ServerPacket>>
+      m_incomingPackets;
   // client scoket description
   Socket m_socket;
 };

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <cstdint>
 #include <cstring>
 #include <expected>
@@ -138,7 +139,8 @@ template <class PACKET> std::string encodePacket(const PACKET &packet) {
   return msg;
 }
 template <class VARIANT>
-std::optional<VARIANT> decodePacket(const std::string &packet) {
+std::optional<internal::PacketWrapper<VARIANT>>
+decodePacket(const std::string &packet) {
 
   DEBUG_ONLY(internal::printPacket(packet));
 
@@ -181,7 +183,8 @@ std::optional<VARIANT> decodePacket(const std::string &packet) {
 
   LOG_DEBUG("Packet decoded");
 
-  return decoded;
+  return internal::PacketWrapper<VARIANT>{.header = *headerResult,
+                                          .body = decoded};
 }
 
 } // namespace network

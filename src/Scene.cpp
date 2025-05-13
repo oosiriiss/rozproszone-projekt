@@ -44,7 +44,10 @@ ConnectClientScene::ConnectClientScene(const char *ip, uint16_t port,
     : SCENE_CONSTRUCTOR, targetIP(ip), targetPort(port),
       m_sceneManager(sceneManager), m_window(window),
       m_client(std::make_shared<network::Client>()) {}
+
 ConnectClientScene::~ConnectClientScene() {}
+
+void ConnectClientScene::resume() { m_isReady = false; }
 
 void ConnectClientScene::update(float dt) {
 
@@ -101,10 +104,21 @@ void ConnectClientScene::draw() {
 ConnectServerScene::ConnectServerScene(const char *ip, uint16_t port,
                                        SCENE_PARAMS)
     : SCENE_CONSTRUCTOR, bindIP(ip), bindPort(port),
-      m_server(std::make_shared<network::Server>()) {}
+      m_server(std::make_shared<network::Server>()) {
+
+  m_server->setOnDisconnectCallback([this](int32_t playerID) {
+    LOG_INFO("Player disconnected ", playerID, " disconnected from lobby");
+    m_lobbyMembers.erase(m_lobbyMembers.find(playerID));
+  });
+}
 ConnectServerScene::~ConnectServerScene() {}
 
 void ConnectServerScene::resume() {
+  m_server->setOnDisconnectCallback([this](int32_t playerID) {
+    LOG_INFO("Player disconnected ", playerID, " disconnected from lobby");
+    m_lobbyMembers.erase(m_lobbyMembers.find(playerID));
+  });
+
   for (auto [p, r] : m_lobbyMembers) {
     m_lobbyMembers[p] = false;
   }
@@ -214,7 +228,6 @@ void ClientGameScene::update(float dt) {
   }
 
   m_playerSyncTimer += dt;
-
   while (auto msg = m_client->pollMessage()) {
     LOG_DEBUG("Received message from server");
     auto packet = *msg;
@@ -270,6 +283,10 @@ void ClientGameScene::update(float dt) {
       m_sceneManager.popScene();
       return;
 
+    } else if (auto *pdr =
+                   std::get_if<network::PlayerDisconnectedResponse>(&packet)) {
+      m_otherPlayers.erase(m_otherPlayers.find(pdr->playerID));
+
     } else {
       LOG_DEBUG("Unknown packet with index: ", packet.index());
       ASSERT(false && "Look debug message above");
@@ -305,6 +322,13 @@ ServerGameScene::ServerGameScene(std::shared_ptr<network::Server> server,
     m_players[client.fd] = Player(client.fd);
     m_players[client.fd].rect.setPosition(m_level.getPlayerStartPos());
   }
+
+  m_server->setOnDisconnectCallback([this](int32_t playerID) {
+    LOG_INFO("Player disconnected ", playerID, " disconnected from lobby");
+    m_players.erase(m_players.find(playerID));
+    m_server->sendAll(
+        network::PlayerDisconnectedResponse{.playerID = playerID});
+  });
 }
 
 ServerGameScene::~ServerGameScene() {}

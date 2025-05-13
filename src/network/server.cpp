@@ -4,6 +4,7 @@
 #include <cstring>
 #include <netinet/in.h>
 #include <optional>
+#include <queue>
 #include <sys/socket.h>
 #include <utility>
 #include <vector>
@@ -79,6 +80,7 @@ std::optional<SocketError> Server::sendAll(network::ServerPacket packet) {
       if (err == SocketError::Disconnected) {
         LOG_INFO("Client disconnected");
         m_clients.erase(m_clients.begin() + i);
+        m_onDisconnect(client.fd);
       }
       return *err;
     }
@@ -103,11 +105,16 @@ std::optional<SocketError> Server::sendOthers(const Socket *client,
       if (err == SocketError::Disconnected) {
         LOG_INFO("Client disconnected");
         m_clients.erase(m_clients.begin() + i);
+        m_onDisconnect(current.fd);
       }
       return *err;
     }
   }
   return std::nullopt;
+}
+
+void Server::setOnDisconnectCallback(std::function<void(int32_t)> cb) {
+  m_onDisconnect = cb;
 }
 
 std::optional<SocketError> Server::send(Socket *client,
@@ -124,6 +131,7 @@ std::optional<SocketError> Server::send(Socket *client,
           m_clients.begin(),
           std::remove_if(m_clients.begin(), m_clients.end(),
                          [client](Socket s) { return s.fd == client->fd; })));
+      m_onDisconnect(client->fd);
     }
 
     return *err;
@@ -137,30 +145,31 @@ std::optional<SocketError> Server::receive() {
     auto e = client.receive();
     if (e)
       return e;
+
+    auto packet = client.nextMessage<network::ClientPacket>();
+
+    if (!packet)
+      continue;
+
+    m_incomingPackets.push(ClientMessage{.socket = &client, .packet = *packet});
   }
   return std::nullopt;
 }
 
 std::optional<std::pair<Socket *, network::ClientPacket>>
 Server::pollMessage() {
-
   if (receive()) {
     LOG_ERROR("Receive failed");
   }
 
-  for (Socket &client : m_clients) {
-
-    if (auto x = client.nextMessage()) {
-      auto packet = network::decodePacket<network::ClientPacket>(*x);
-      LOG_DEBUG("Packet decoded");
-      if (!packet.has_value()) {
-        LOG_ERROR("Couldn't decode client packet");
-        continue;
-      }
-      return std::make_pair(&client, *packet);
-    }
+  if (m_incomingPackets.empty()) {
+    return std::nullopt;
   }
-  return std::nullopt;
+
+  const auto packet = m_incomingPackets.top();
+  m_incomingPackets.pop();
+
+  return std::make_pair(packet.socket, packet.packet.body);
 }
 
 } // namespace network

@@ -57,6 +57,16 @@ std::optional<SocketError> Client::send(network::ClientPacket packet) {
 
 std::optional<SocketError> Client::receive() {
   auto error = m_socket.receive();
+
+  while (auto packetWrapper = m_socket.nextMessage<network::ServerPacket>()) {
+
+    if (!packetWrapper.has_value()) {
+      LOG_ERROR("Couldn't decode server packet");
+      return std::nullopt;
+    }
+    m_incomingPackets.push(*packetWrapper);
+  }
+
   if (error)
     return error;
 
@@ -68,19 +78,13 @@ std::optional<network::ServerPacket> Client::pollMessage() {
     LOG_ERROR("Receive failed");
   }
 
-  auto msg = m_socket.nextMessage();
-
-  if (!msg.has_value())
-    return std::nullopt;
-
-  auto packet = network::decodePacket<network::ServerPacket>(*msg);
-
-  if (!packet.has_value()) {
-    LOG_ERROR("Couldn't decode server packet");
+  if (m_incomingPackets.empty()) {
     return std::nullopt;
   }
 
-  return packet;
+  const auto packet = m_incomingPackets.top();
+  m_incomingPackets.pop();
+  return packet.body;
 }
 
 } // namespace network

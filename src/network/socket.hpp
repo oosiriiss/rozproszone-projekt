@@ -2,10 +2,10 @@
 
 #include <expected>
 
+#include "packet.hpp"
 #include <netinet/in.h>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <sys/socket.h>
 
 namespace network {
@@ -43,7 +43,38 @@ struct Socket {
   // valid only if the socket is server
   std::expected<Socket, SocketError> accept();
 
-  std::optional<std::string> nextMessage();
+  template <typename T>
+  std::optional<internal::PacketWrapper<T>> nextMessage() {
+
+    constexpr auto separator = network::internal::SEPARATOR;
+    constexpr auto separatorSize = sizeof(network::internal::SEPARATOR);
+
+    if (this->currentData.size() <= separatorSize)
+      return std::nullopt;
+
+    const int sepIndex = this->currentData.find(separator, 0, separatorSize);
+    if (sepIndex == std::string::npos) {
+      LOG_ERROR("No separator found in (", std::string(separator, 4), ")");
+      return std::nullopt;
+    }
+
+    LOG_DEBUG("Sep message: ", sepIndex);
+
+    // Copying the message
+    // Starting is also the length of current message
+    std::string msg = std::string(this->currentData.substr(0, sepIndex));
+
+    // Moving the internal buffer to the next message
+    const auto startOfNextMessage = sepIndex + separatorSize;
+    this->currentData.erase(0, startOfNextMessage);
+
+    auto decoded = decodePacket<T>(msg);
+
+    if (!decoded)
+      return std::nullopt;
+
+    return *decoded;
+  }
 
   bool setBlocking(bool shouldBlock);
 

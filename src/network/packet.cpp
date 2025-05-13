@@ -1,5 +1,6 @@
 #include "packet.hpp"
 #include <SFML/System/Vector2.hpp>
+#include <chrono>
 #include <cstdint>
 #include <expected>
 #include <iomanip>
@@ -99,14 +100,22 @@ std::string createPacketHeader(PacketType type,
   std::string header = std::string(HEADER_LENGTH_BYTES, '-');
   LOG_DEBUG("Encoded header length", header.size());
   std::memcpy(header.data(), VERSION, sizeof(VERSION));
-  std::memcpy(header.data() + sizeof(VERSION), &type, sizeof(type));
+  size_t offset = sizeof(VERSION);
+  std::memcpy(header.data() + offset, &type, sizeof(type));
+  offset += sizeof(type);
   std::memcpy(header.data() + sizeof(VERSION) + sizeof(type), &contentLength,
               sizeof(contentLength));
+  offset += sizeof(contentLength);
+
+  const auto timestamp =
+      std::chrono::system_clock::now().time_since_epoch().count();
+  static_assert(sizeof(timestamp) == sizeof(Timestamp));
+  std::memcpy(header.data() + offset, &timestamp, sizeof(Timestamp));
 
   return header;
 }
 
-std::expected<HeaderParseResult, PacketError>
+std::expected<PacketHeader, PacketError>
 parseHeader(const std::string &packet) {
   if (packet.size() < HEADER_LENGTH_BYTES) {
     LOG_ERROR("Packet is too short with size of: ", packet.size());
@@ -117,12 +126,19 @@ parseHeader(const std::string &packet) {
               ")");
     return std::unexpected(PacketError::InvalidVersion);
   }
-  PacketType type = 0;
-  std::memcpy(&type, packet.data() + sizeof(VERSION), sizeof(type));
   PacketContentLength length = 0;
-  std::memcpy(&length, packet.data() + sizeof(VERSION) + sizeof(type),
-              sizeof(length));
-  return HeaderParseResult{.type = type, .contentLength = length};
+  PacketType type = 0;
+  Timestamp timestamp = 0;
+
+  size_t offset = sizeof(VERSION);
+
+  std::memcpy(&type, packet.data() + offset, sizeof(type));
+  offset += sizeof(type);
+  std::memcpy(&length, packet.data() + offset, sizeof(length));
+  offset += sizeof(length);
+  std::memcpy(&timestamp, packet.data() + offset, sizeof(timestamp));
+  return PacketHeader{
+      .type = type, .contentLength = length, .timestamp = timestamp};
 }
 
 void printPacket(const std::string &s) {

@@ -50,6 +50,7 @@ public:
   ~ConnectClientScene();
 
   void update(float dt) override;
+  void resume() override;
   void draw() override;
 
   const char *targetIP;
