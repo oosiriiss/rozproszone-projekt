@@ -1,0 +1,43 @@
+title Diagram sekwencyjny
+
+actor Gracz 1
+actor Gracz 2
+database Serwer
+
+Gracz 1-> Serwer: Dołączenie do poczekalni
+Serwer-> Gracz 1: Stan poczekalni 
+Gracz 2-> Serwer: Dołączenie do poczekalni
+Serwer-> Gracz 2: Stan poczekalni 
+
+Gracz 1->Serwer: Żądanie gotowosci
+
+Gracz 2->Serwer: Żądanie gotowosci
+
+Serwer -> Gracz 1: Zacznij gre
+Serwer -> Gracz 2: Zacznij gre
+
+loop Do momentu zakończenia gry
+Gracz 1 -> Serwer: Żądanie Wykonania akcji
+
+note over Gracz 1: Lokalna symulacja świata gry
+
+Gracz 2 -> Serwer: Żądanie Wykonania akcji
+
+note over Gracz 2: Lokalna symulacja świata gry
+
+Serwer -> *Świat: Symulacja świata
+note over Świat: Przetwarzanie akcji i ich skutków (np. zadanie obrażeń)
+note over Świat: Obsługa kolizji
+note over Świat: Symulacja przeciwników 
+Świat -> Serwer:
+destroysilent Świat
+Serwer -> Gracz 1: Aktualizacja stanu gry
+
+Serwer -> Gracz 2: Aktualizacja stanu gry
+end
+
+Serwer -> Gracz 1: Pokaż wynik gry i wróć do poczekalni
+
+Serwer -> Gracz 2: Pokaż wynik gry i wróć do poczekalni
+
+
