@@ -1,4 +1,5 @@
 #include "Base.hpp"
+#include "../logging.hpp"
 #include "Level.hpp"
 #include <SFML/Window/Mouse.hpp>
 
@@ -23,6 +24,8 @@ void Base::damage() {
   if (m_dmgCooldown <= 0) {
     this->healthbar.health -= 10;
     m_dmgCooldown = 2.f;
+
+    LOG_INFO("Dealing damage to base");
   }
 }
 

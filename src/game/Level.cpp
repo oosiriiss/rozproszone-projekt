@@ -132,7 +132,6 @@ void Level::update(float dt) {
   for (auto &e : enemies) {
     if (base.rect.getGlobalBounds().findIntersection(
             e.rect.getGlobalBounds())) {
-      LOG_INFO("Dealing dmg to base");
       // enemy not moving
       e.update(0);
     } else {

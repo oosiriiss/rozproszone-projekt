@@ -26,6 +26,7 @@ struct Socket {
   int32_t fd;
   struct sockaddr_in addr;
   socklen_t addrlen;
+  SocketType type;
 
   // Holds all data read from socket
   // To read individual messages use "nextMessage"

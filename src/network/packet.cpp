@@ -68,7 +68,7 @@ std::string EnemyUpdateResponse::serialize() const {
 void EnemyUpdateResponse::deserialize(const std::string_view body) {
   LOG_DEBUG("Deserializing EnemyUpdateResponse");
   LOG_DEBUG("Received packet: ");
-  printBytes(body);
+  DEBUG_ONLY(printBytes(body));
   size_t offset = internal::deserialize(body, this->enemies);
   LOG_DEBUG("Received enemies: ", enemies.size());
 }

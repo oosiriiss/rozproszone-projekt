@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <sys/socket.h>
+#include <unistd.h>
 
 namespace network {
 
@@ -90,10 +91,13 @@ std::expected<Socket, SocketError> Socket::create(const char *ipAddress,
     }
   }
 
-  return Socket{.fd = socketfd,
-                .addr = addr,
-                .addrlen = sizeof(addr),
-                .currentData = std::string(0, 0)};
+  return Socket{
+      .fd = socketfd,
+      .addr = addr,
+      .addrlen = sizeof(addr),
+      .type = type,
+      .currentData = std::string(0, 0),
+  };
 }
 std::optional<SocketError> Socket::shutdown() noexcept {
   // Should this be an error or just ignored?
@@ -108,7 +112,8 @@ std::optional<SocketError> Socket::shutdown() noexcept {
 
 std::optional<SocketError> Socket::send(const char *msg, uint32_t msglen) {
 
-  int r = ::send(this->fd, msg, msglen, MSG_NOSIGNAL);
+  int r = ::sendto(this->fd, msg, msglen, MSG_NOSIGNAL,
+                   (struct sockaddr *)&this->addr, this->addrlen);
 
   // Is this necessary?
   if (r < 0) {
@@ -128,8 +133,13 @@ std::optional<SocketError> Socket::receive() {
 
   int bytesRead = 0;
 
+  struct sockaddr_in from = {0};
+  socklen_t len = 0;
+
   while (true) {
-    int bytesRead = recv(this->fd, &buf[0], buf.size(), 0);
+    int bytesRead = recvfrom(this->fd, &buf[0], buf.size(), MSG_NOSIGNAL,
+                             (struct sockaddr *)&from, &len);
+    // int bytesRead = recv(this->fd, &buf[0], buf.size(), 0);
     if (bytesRead <= 0) {
       SocketError e = errnoToSocketError();
       if (e == SocketError::WouldBlock)

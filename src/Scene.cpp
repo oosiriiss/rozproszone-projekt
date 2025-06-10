@@ -67,7 +67,7 @@ void ConnectClientScene::update(float dt) {
                      std::get_if<network::LobbyReadyResponse>(&packet)) {
         m_lobbyMembers[lrr->playerID] = lrr->isReady;
       } else {
-        LOG_ERROR("Unknown packet");
+        LOG_ERROR("Unknown packet (variant index:", packet.index(), ")");
       }
     }
   }
@@ -76,6 +76,7 @@ void ConnectClientScene::draw() {
   ui::Text(" ");
   ui::Text("Server Address:");
   ui::Text(targetIP);
+  ui::Text(std::to_string(targetPort));
 
   if (m_isConnected) {
     ui::Text("Waiting for the game to start");
@@ -145,7 +146,7 @@ void ConnectServerScene::update(float dt) {
       m_server->sendAll(network::LobbyReadyResponse{.playerID = socket->fd,
                                                     .isReady = lrr->isReady});
     } else {
-      LOG_ERROR("Unknown packet");
+      LOG_ERROR("Unknown packet (variant index:", msg.index(), ")");
     }
   }
 
@@ -404,7 +405,7 @@ void ServerGameScene::update(float dt) {
   // Sending updated enemies to the clients
 
   m_fullSyncTimer += dt;
-  if (m_fullSyncTimer > 0.3f) {
+  if (m_fullSyncTimer > 0.06f) {
     m_fullSyncTimer = 0;
     std::vector<Enemy::DTO> enemyDTOs;
     enemyDTOs.reserve(m_level.enemies.size());
