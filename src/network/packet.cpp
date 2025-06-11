@@ -108,7 +108,7 @@ std::string createPacketHeader(PacketType type,
   offset += sizeof(contentLength);
 
   const auto timestamp =
-      std::chrono::system_clock::now().time_since_epoch().count();
+      std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
   static_assert(sizeof(timestamp) == sizeof(Timestamp));
   std::memcpy(header.data() + offset, &timestamp, sizeof(Timestamp));
 
