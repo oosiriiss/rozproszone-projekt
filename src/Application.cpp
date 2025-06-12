@@ -29,14 +29,11 @@ void SIGINT_handler(int s) {
 
 Application::Application(int argc, char *argv[]) : m_assetManager("./assets") {
 
-  const char *title = "INVALID TITLE";
+  const char *title = "Client";
 
   if (argc > 1 && argv[1][0] == 's') {
     title = "Server";
-  } else if (argc > 2) {
-    title = argv[2];
-  }
-
+  } 
   constexpr int WINDOW_WIDTH = 640;
   constexpr int WINDOW_HEIGHT = 640;
   constexpr int WINDOW_STYLE = sf::Style::Titlebar;

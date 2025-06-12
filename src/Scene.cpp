@@ -74,9 +74,8 @@ void ConnectClientScene::update(float dt) {
 }
 void ConnectClientScene::draw() {
   ui::Text(" ");
-  ui::Text("Server Address:");
-  ui::Text(targetIP);
-  ui::Text(std::to_string(targetPort));
+  ui::Text("Server Address:" + std::string(targetIP) + ":" +
+           std::to_string(targetPort));
 
   if (m_isConnected) {
     ui::Text("Waiting for the game to start");
@@ -159,7 +158,8 @@ void ConnectServerScene::update(float dt) {
 }
 void ConnectServerScene::draw() {
   ui::Text(" ");
-  ui::Text("Server Address:" + std::string(bindIP));
+  ui::Text("Server Address:" + std::string(bindIP) + ":" +
+           std::to_string(bindPort));
 
   if (m_isBound) {
     for (auto [id, isReady] : m_lobbyMembers) {
@@ -389,9 +389,10 @@ void ServerGameScene::update(float dt) {
 
   m_level.handleFireballHits();
   if (m_level.handleBaseHits()) {
-    if (m_level.base.healthbar.health <= 0)
+    if (m_level.base.healthbar.health <= 0) {
       m_server->sendAll(network::GameOverResponse{.isWon = false});
-    else
+      m_sceneManager.popScene();
+    } else
       m_server->sendAll(
           network::BaseHitResponse{.newHealth = m_level.base.healthbar.health});
   }
