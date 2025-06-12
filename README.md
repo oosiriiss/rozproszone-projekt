@@ -15,9 +15,8 @@ Aplikacja może zostać uruchomienia poprzez wykonanie poniższego polecenia, kt
 
 Wewnątrz folderu pobranego z repozytoriumu uruchomić polecenia (skrypt ./run.sh musi posiadać uprawnienia do wykonywania):
 ```
-mkdir build && cd build && cmake .. -G Ninja && cd .. && ./run.sh
+mkdir build && cd build && cmake .. -G Ninja && ln -sf ../assets ./assets && cd .. && ./run.sh
 ```
-
 
 ### Kompilacja manualna
 
@@ -27,7 +26,7 @@ git clone rozproszone-projekt && git checkout master && cd rozproszone-projekt
 ```
 2. Generowanie plików do kompilacji (cmake + ninja)
 ```
-mkdir build && cd build && cmake .. -G Ninja 
+mkdir build && ln -sf ../assets ./assets && cd build && cmake .. -G Ninja 
 ```
 3. Kompilacja
 ```
