@@ -6,6 +6,7 @@
 - **cmake** - do generowania plików budowy projektu
 - **ninja** - Build system (opcjonalne w przypadku manualne kompilacji)
 - **tmux** - Do wygodnego właczenia 3 instancji aplikacji w jednym oknie terminala
+- **g++**  - Lub inny kompilator wspierający c++23
 
 
 ### Uruchomienie za pomocą skryptu
@@ -14,7 +15,7 @@ Aplikacja może zostać uruchomienia poprzez wykonanie poniższego polecenia, kt
 
 Wewnątrz folderu pobranego z repozytoriumu uruchomić polecenia (skrypt ./run.sh musi posiadać uprawnienia do wykonywania):
 ```
-mkdir build && cd build && cmake .. -G Ninja && ./run.sh
+mkdir build && cd build && cmake .. -G Ninja && cd .. && ./run.sh
 ```
 
 
@@ -22,15 +23,15 @@ mkdir build && cd build && cmake .. -G Ninja && ./run.sh
 
 1. Klonowanie repozytorium
 ```
-$ git clone rozproszone-projekt && git checkout master && cd rozproszone-projekt
+git clone rozproszone-projekt && git checkout master && cd rozproszone-projekt
 ```
 2. Generowanie plików do kompilacji (cmake + ninja)
 ```
-$ mkdir build && cd build && cmake .. -G Ninja 
+mkdir build && cd build && cmake .. -G Ninja 
 ```
 3. Kompilacja
 ```
-$ ninja
+ninja
 ```
 4. Po pomyślnej kompilacji w katalogu build powinny znajdować się 2 pliki wykonywalne **executable-debug** oraz **executable-release**.
 
